@@ -22,4 +22,6 @@ pub enum StorageError {
     },
     #[snafu(display("Attempt to write to a read-only storage"))]
     Readonly {},
+    #[snafu(display("Attempt to read or write to a storage out of bounds"))]
+    OutOfBounds {},
 }

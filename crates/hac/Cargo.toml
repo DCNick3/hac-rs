@@ -6,4 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+hex = "0.4.3"
+rust-ini = "0.18.0"
 snafu = { version = "0.7.4", features = [] }
+serde = "1.0.152"
+dirs-next = "2.0.0"

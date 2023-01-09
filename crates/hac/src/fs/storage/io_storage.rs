@@ -24,12 +24,12 @@ impl<Io: Read + Seek> RoIoStorage<Io> {
         })
     }
 
-    fn clamp_size_mut(&self, offset: u64, buf: &mut [u8]) -> &mut [u8] {
+    fn check_size<'a>(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         let end = offset + buf.len() as u64;
         if end > self.size {
-            &mut buf[..(self.size - offset) as usize]
+            Err(StorageError::OutOfBounds {})
         } else {
-            buf
+            Ok(())
         }
     }
 }
@@ -43,6 +43,7 @@ impl RwIoStorage<File> {
 
 impl<Io: Read + Seek> ReadableStorage for RoIoStorage<Io> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
+        self.check_size(offset, buf)?;
         let mut io = self.io.lock().unwrap();
         io.seek(SeekFrom::Start(offset))
             .context(IoSnafu { operation: "seek" })?;
@@ -74,6 +75,17 @@ struct RwIoStorageInner<Io: Read + Write + Seek> {
     size: u64,
 }
 
+impl<Io: Read + Write + Seek> RwIoStorageInner<Io> {
+    fn check_size(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
+        let end = offset + buf.len() as u64;
+        if end > self.size {
+            Err(StorageError::OutOfBounds {})
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// A storage that wraps an IO object, allowing read and write access.
 ///
 /// Note that this storage does not implement resizing correctly, as there is no trait for that =(.
@@ -93,6 +105,7 @@ impl<Io: Read + Write + Seek> RwIoStorage<Io> {
 impl<Io: Read + Write + Seek> ReadableStorage for RwIoStorage<Io> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         let mut inner = self.0.lock().unwrap();
+        inner.check_size(offset, buf)?;
         inner
             .io
             .seek(SeekFrom::Start(offset))
@@ -112,6 +125,7 @@ impl<Io: Read + Write + Seek> ReadableStorage for RwIoStorage<Io> {
 impl<Io: Read + Write + Seek> Storage for RwIoStorage<Io> {
     fn write(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         let mut inner = self.0.lock().unwrap();
+        inner.check_size(offset, buf)?;
         inner
             .io
             .seek(SeekFrom::Start(offset))
