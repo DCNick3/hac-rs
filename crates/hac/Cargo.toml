@@ -9,5 +9,13 @@ edition = "2021"
 hex = "0.4.3"
 rust-ini = "0.18.0"
 snafu = { version = "0.7.4", features = [] }
-serde = "1.0.152"
+serde = { version = "1.0.152", features = ["derive"] }
 dirs-next = "2.0.0"
+binrw = "0.10.0"
+
+cipher = "0.4.3"
+aes = "0.8.2"
+xts-mode = "0.5.1"
+
+digest = "0.10.6"
+sha2 = "0.10.6"

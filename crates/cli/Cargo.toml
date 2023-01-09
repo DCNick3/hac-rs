@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 hac = { path = "../hac" }
+clap = "4.0.32"

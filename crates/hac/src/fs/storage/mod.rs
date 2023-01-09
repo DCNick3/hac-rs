@@ -2,6 +2,8 @@ use snafu::Snafu;
 
 mod io_storage;
 
+pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
+
 pub trait ReadableStorage {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError>;
     fn get_size(&self) -> u64;

@@ -6,6 +6,7 @@ use std::sync::Mutex;
 
 use super::{IoSnafu, ReadableStorage, Storage, StorageError};
 
+#[derive(Debug)]
 pub struct RoIoStorage<Io: Read + Seek> {
     io: Mutex<Io>,
     size: u64,
@@ -31,13 +32,6 @@ impl<Io: Read + Seek> RoIoStorage<Io> {
         } else {
             Ok(())
         }
-    }
-}
-
-impl RwIoStorage<File> {
-    pub fn new_file(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let io = File::open(path).context(IoSnafu { operation: "open" })?;
-        Self::new(io)
     }
 }
 
@@ -70,6 +64,7 @@ impl<Io: Read + Seek> Storage for RoIoStorage<Io> {
     }
 }
 
+#[derive(Debug)]
 struct RwIoStorageInner<Io: Read + Write + Seek> {
     io: Io,
     size: u64,
@@ -152,5 +147,28 @@ impl<Io: Read + Write + Seek> Storage for RwIoStorage<Io> {
             .context(IoSnafu { operation: "seek" })?;
         inner.size = new_size;
         Ok(())
+    }
+}
+
+pub type FileRoStorage = RoIoStorage<File>;
+pub type FileRwStorage = RwIoStorage<File>;
+
+impl FileRoStorage {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+        let io = File::open(path).context(IoSnafu { operation: "open" })?;
+        Self::new(io)
+    }
+}
+
+impl FileRwStorage {
+    pub fn new_file(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+        let io = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .context(IoSnafu { operation: "open" })?;
+        Self::new(io)
     }
 }
