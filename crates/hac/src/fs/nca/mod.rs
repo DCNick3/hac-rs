@@ -2,7 +2,7 @@ mod structs;
 
 use crate::crypto::keyset::KeySet;
 use crate::fs::nca::structs::{NcaFsHeader, NcaHeader, NcaMagic};
-use crate::fs::storage::{Storage, StorageError};
+use crate::fs::storage::{ReadableStorage, ReadableStorageExt, SliceStorage, StorageError};
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
@@ -25,6 +25,10 @@ pub enum NcaError {
     FsHeaderHashMismatch {
         index: usize,
     },
+    StorageSizeMismatch {
+        expected: u64,
+        actual: u64,
+    },
 }
 
 #[derive(Debug)]
@@ -34,7 +38,7 @@ struct AllNcaHeaders {
 }
 
 #[derive(Debug)]
-pub struct Nca<S: Storage> {
+pub struct Nca<S: ReadableStorage> {
     storage: S,
     headers: AllNcaHeaders,
     is_decrypted: bool,
@@ -44,9 +48,16 @@ const ALL_HEADERS_SIZE: usize = 0xc00;
 const NCA_HEADER_SIZE: usize = 0x400;
 const HEADER_SECTOR_SIZE: usize = 0x200;
 
-impl<S: Storage> Nca<S> {
+impl<S: ReadableStorage> Nca<S> {
     pub fn new(key_set: &KeySet, storage: S) -> Result<Self, NcaError> {
         let (headers, is_decrypted) = Self::parse_headers(key_set, &storage)?;
+
+        if headers.nca_header.nca_size != storage.get_size() {
+            return Err(NcaError::StorageSizeMismatch {
+                expected: headers.nca_header.nca_size,
+                actual: storage.get_size(),
+            });
+        }
 
         Ok(Self {
             storage,
@@ -114,7 +125,7 @@ impl<S: Storage> Nca<S> {
         for (index, data) in fs_header_data.chunks_exact(HEADER_SECTOR_SIZE).enumerate() {
             let section_entry = nca_header.section_table[index];
 
-            if section_entry.present() {
+            if section_entry.is_enabled {
                 let hash = nca_header.fs_header_hashes[index];
                 hash.verify(data)
                     .map_err(|_| NcaError::FsHeaderHashMismatch { index })?;
@@ -134,5 +145,20 @@ impl<S: Storage> Nca<S> {
             },
             is_decrypted,
         ))
+    }
+
+    pub fn get_encrypted_section_storage(&self, index: usize) -> Option<SliceStorage<S>> {
+        let section_entry = self.headers.nca_header.section_table[index];
+
+        if !section_entry.is_enabled {
+            return None;
+        }
+
+        Some(
+            self.storage
+                .clone()
+                .slice(section_entry.start.into(), section_entry.size())
+                .expect("BUG: invalid section slice"),
+        )
     }
 }

@@ -2,17 +2,17 @@ use snafu::ResultExt;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use super::{IoSnafu, ReadableStorage, Storage, StorageError};
 
 #[derive(Debug)]
-pub struct RoIoStorage<Io: Read + Seek> {
-    io: Mutex<Io>,
+pub struct RoIoStorage<Io: Read + Seek + Send + Sync> {
+    io: Arc<Mutex<Io>>,
     size: u64,
 }
 
-impl<Io: Read + Seek> RoIoStorage<Io> {
+impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
     pub fn new(mut io: Io) -> Result<Self, StorageError> {
         let size = io
             .seek(SeekFrom::End(0))
@@ -20,7 +20,7 @@ impl<Io: Read + Seek> RoIoStorage<Io> {
         io.seek(SeekFrom::Start(0))
             .context(IoSnafu { operation: "seek" })?;
         Ok(Self {
-            io: Mutex::new(io),
+            io: Arc::new(Mutex::new(io)),
             size,
         })
     }
@@ -35,7 +35,16 @@ impl<Io: Read + Seek> RoIoStorage<Io> {
     }
 }
 
-impl<Io: Read + Seek> ReadableStorage for RoIoStorage<Io> {
+impl<Io: Read + Seek + Send + Sync> Clone for RoIoStorage<Io> {
+    fn clone(&self) -> Self {
+        Self {
+            io: self.io.clone(),
+            size: self.size,
+        }
+    }
+}
+
+impl<Io: Read + Seek + Send + Sync> ReadableStorage for RoIoStorage<Io> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         self.check_size(offset, buf)?;
         let mut io = self.io.lock().unwrap();
@@ -50,7 +59,7 @@ impl<Io: Read + Seek> ReadableStorage for RoIoStorage<Io> {
     }
 }
 
-impl<Io: Read + Seek> Storage for RoIoStorage<Io> {
+impl<Io: Read + Seek + Send + Sync> Storage for RoIoStorage<Io> {
     fn write(&self, _offset: u64, _buf: &[u8]) -> Result<(), StorageError> {
         Err(StorageError::Readonly {})
     }
@@ -60,17 +69,17 @@ impl<Io: Read + Seek> Storage for RoIoStorage<Io> {
     }
 
     fn set_size(&self, _new_size: u64) -> Result<(), StorageError> {
-        Err(StorageError::Readonly {})
+        Err(StorageError::FixedSize {})
     }
 }
 
 #[derive(Debug)]
-struct RwIoStorageInner<Io: Read + Write + Seek> {
+struct RwIoStorageInner<Io: Read + Write + Seek + Send + Sync> {
     io: Io,
     size: u64,
 }
 
-impl<Io: Read + Write + Seek> RwIoStorageInner<Io> {
+impl<Io: Read + Write + Seek + Send + Sync> RwIoStorageInner<Io> {
     fn check_size(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         let end = offset + buf.len() as u64;
         if end > self.size {
@@ -84,20 +93,26 @@ impl<Io: Read + Write + Seek> RwIoStorageInner<Io> {
 /// A storage that wraps an IO object, allowing read and write access.
 ///
 /// Note that this storage does not implement resizing correctly, as there is no trait for that =(.
-pub struct RwIoStorage<Io: Read + Write + Seek>(Mutex<RwIoStorageInner<Io>>);
+pub struct RwIoStorage<Io: Read + Write + Seek + Send + Sync>(Arc<Mutex<RwIoStorageInner<Io>>>);
 
-impl<Io: Read + Write + Seek> RwIoStorage<Io> {
+impl<Ioo: Read + Write + Seek + Send + Sync> Clone for RwIoStorage<Ioo> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<Io: Read + Write + Seek + Send + Sync> RwIoStorage<Io> {
     pub fn new(mut io: Io) -> Result<Self, StorageError> {
         let size = io
             .seek(SeekFrom::End(0))
             .context(IoSnafu { operation: "seek" })?;
         io.seek(SeekFrom::Start(0))
             .context(IoSnafu { operation: "seek" })?;
-        Ok(Self(Mutex::new(RwIoStorageInner { io, size })))
+        Ok(Self(Arc::new(Mutex::new(RwIoStorageInner { io, size }))))
     }
 }
 
-impl<Io: Read + Write + Seek> ReadableStorage for RwIoStorage<Io> {
+impl<Io: Read + Write + Seek + Send + Sync> ReadableStorage for RwIoStorage<Io> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         let mut inner = self.0.lock().unwrap();
         inner.check_size(offset, buf)?;
@@ -117,7 +132,7 @@ impl<Io: Read + Write + Seek> ReadableStorage for RwIoStorage<Io> {
     }
 }
 
-impl<Io: Read + Write + Seek> Storage for RwIoStorage<Io> {
+impl<Io: Read + Write + Seek + Send + Sync> Storage for RwIoStorage<Io> {
     fn write(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         let mut inner = self.0.lock().unwrap();
         inner.check_size(offset, buf)?;
@@ -161,7 +176,7 @@ impl FileRoStorage {
 }
 
 impl FileRwStorage {
-    pub fn new_file(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
         let io = File::options()
             .read(true)
             .write(true)
@@ -169,6 +184,13 @@ impl FileRwStorage {
             .truncate(false)
             .open(path)
             .context(IoSnafu { operation: "open" })?;
+        Self::new(io)
+    }
+
+    pub fn create(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+        let io = File::create(path).context(IoSnafu {
+            operation: "create",
+        })?;
         Self::new(io)
     }
 }

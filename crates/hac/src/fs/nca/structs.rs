@@ -84,17 +84,17 @@ impl Debug for TitleId {
 pub struct RightsId(pub HexData<0x10>);
 
 #[derive(Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
-pub struct SectionTableOffset(u64);
+pub struct SectionTableOffset(u32);
 
 impl From<SectionTableOffset> for u64 {
-    fn from(o: SectionTableOffset) -> Self {
-        o.0 * 0x200
+    fn from(v: SectionTableOffset) -> Self {
+        v.0 as u64 * 0x200
     }
 }
 
 impl From<u64> for SectionTableOffset {
-    fn from(o: u64) -> Self {
-        SectionTableOffset(o / 0x200)
+    fn from(v: u64) -> Self {
+        SectionTableOffset((v / 0x200).try_into().unwrap())
     }
 }
 
@@ -106,13 +106,17 @@ impl Debug for SectionTableOffset {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct SectionTableEntry {
-    pub offset: SectionTableOffset,
-    pub size: SectionTableOffset,
+    pub start: SectionTableOffset,
+    pub end: SectionTableOffset,
+    #[brw(pad_after = 0x7)]
+    #[br(parse_with = crate::brw_utils::read_bool)]
+    #[bw(write_with = crate::brw_utils::write_bool)]
+    pub is_enabled: bool,
 }
 
 impl SectionTableEntry {
-    pub fn present(&self) -> bool {
-        self.offset.0 != 0 && self.size.0 != 0
+    pub fn size(&self) -> u64 {
+        (self.end.0 - self.start.0) as u64 * 0x200
     }
 }
 
@@ -180,6 +184,7 @@ pub struct Sha256IntegrityInfo {
 pub struct IvfcIntegrityInfoLevel {
     pub offset: u64,
     pub size: u64,
+    #[brw(pad_after = 4)]
     pub block_size: u32,
 }
 
