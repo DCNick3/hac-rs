@@ -8,7 +8,6 @@ use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::io::BufReader;
 
 #[derive(Snafu, Debug)]
 pub struct PfsParseError {
@@ -91,7 +90,7 @@ impl<'a, S: ReadableStorage> Iterator for PartitionFileSystemIter<'a, S> {
 
 impl<S: ReadableStorage> PartitionFileSystem<S> {
     pub fn new(storage: S) -> Result<Self, PfsParseError> {
-        let mut io = BufReader::new(storage.io());
+        let mut io = storage.buf_read();
 
         let PartitionFsHeader {
             file_entries,

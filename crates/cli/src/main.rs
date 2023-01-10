@@ -1,8 +1,43 @@
 use hac::crypto::keyset::KeySet;
 use hac::fs::nca::{IntegrityCheckLevel, Nca};
 use hac::fs::pfs::PartitionFileSystem;
-use hac::fs::storage::ReadableStorageExt;
-use std::path::PathBuf;
+use hac::fs::romfs;
+use hac::fs::romfs::RomFileSystem;
+use hac::fs::storage::{ReadableStorage, ReadableStorageExt};
+use std::path::{Path, PathBuf};
+
+fn walk_romfs<S: ReadableStorage>(dir: romfs::Directory<'_, S>, depth: usize) {
+    for entry in dir.entries() {
+        match entry {
+            romfs::Entry::Directory(dir) => {
+                println!("{:indent$}{}", "", dir.name(), indent = depth * 2);
+                walk_romfs(dir, depth + 1);
+            }
+            romfs::Entry::File(file) => {
+                println!("{:indent$}{}", "", file.name(), indent = depth * 2);
+            }
+        }
+    }
+}
+
+fn extract_romfs<S: ReadableStorage>(dir: romfs::Directory<'_, S>, path: &Path) {
+    std::fs::create_dir_all(path).unwrap();
+    for entry in dir.entries() {
+        match entry {
+            romfs::Entry::Directory(dir) => {
+                let path = path.join(dir.name());
+                std::fs::create_dir_all(&path).unwrap();
+                extract_romfs(dir, &path);
+            }
+            romfs::Entry::File(file) => {
+                let path = path.join(file.name());
+                let storage = file.storage().unwrap();
+                println!("Extracting {}...", path.display());
+                storage.save_to_file(path).unwrap();
+            }
+        }
+    }
+}
 
 fn main() {
     let base_name = "test_files/de16b5aa443dd171bb90b10b88ec3d3b".to_string();
@@ -43,6 +78,10 @@ fn main() {
     let duration = start.elapsed();
 
     println!("Written the section 1 in {:?}", duration);
+
+    let fs1 = RomFileSystem::new(storage).unwrap();
+
+    extract_romfs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
 
     let storage = nca
         .get_section_storage(2, IntegrityCheckLevel::Full)

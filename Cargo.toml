@@ -3,3 +3,7 @@ members = [
     "crates/hac",
     "crates/cli",
 ]
+
+# enable debug info in release
+[profile.release]
+debug = true

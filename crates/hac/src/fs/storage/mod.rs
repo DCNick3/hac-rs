@@ -1,5 +1,6 @@
 use num::Integer;
 use snafu::Snafu;
+use std::io::BufReader;
 use std::path::Path;
 
 mod block_adapter_storage;
@@ -97,6 +98,13 @@ pub trait ReadableStorageExt: ReadableStorage {
         Self: Sized,
     {
         StorageIo::new(self)
+    }
+
+    fn buf_read(self) -> BufReader<StorageIo<Self>>
+    where
+        Self: Sized,
+    {
+        BufReader::new(self.io())
     }
 
     fn copy_to<S: Storage>(&self, other: &S) -> Result<(), StorageError> {
