@@ -208,13 +208,30 @@ pub enum IntegrityInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
-pub struct PatchInfo {}
+pub struct PatchInfo {
+    pub relocation_tree_offset: u64,
+    pub relocation_tree_size: u64,
+    pub relocation_tree_header: HexData<0x10>,
+    pub encryption_tree_offset: u64,
+    pub encryption_tree_size: u64,
+    pub encryption_tree_header: HexData<0x10>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
-pub struct SparseInfo {}
+pub struct SparseInfo {
+    pub meta_offset: u64,
+    pub meta_size: u64,
+    pub meta_header: HexData<0x10>,
+    pub physical_offset: u64,
+    pub generation: u16,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
-pub struct CompressionInfo {}
+pub struct CompressionInfo {
+    pub table_offset: u64,
+    pub table_size: u64,
+    pub table_header: HexData<0x10>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
 #[brw(little)]
@@ -240,4 +257,18 @@ pub struct NcaFsHeader {
     #[brw(pad_size_to = 0x28)] // this is the allocated size for CompressionInfo
     #[brw(pad_after = 0x60)] // this is unused space after it
     pub compression_info: CompressionInfo,
+}
+
+impl NcaFsHeader {
+    pub fn is_patch_section(&self) -> bool {
+        self.patch_info.relocation_tree_size != 0
+    }
+
+    pub fn exists_sparse_layer(&self) -> bool {
+        self.sparse_info.generation != 0
+    }
+
+    pub fn exists_compression_layer(&self) -> bool {
+        self.compression_info.table_offset != 0 && self.compression_info.table_size != 0
+    }
 }

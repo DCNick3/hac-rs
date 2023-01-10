@@ -210,6 +210,11 @@ impl<S: ReadableStorage> Nca<S> {
             return None;
         }
 
+        let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
+        if fs_header.exists_sparse_layer() {
+            todo!("Sparse layer is not supported yet");
+        }
+
         Some(
             self.storage
                 .clone()
