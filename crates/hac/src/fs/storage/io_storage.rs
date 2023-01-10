@@ -127,7 +127,7 @@ impl<Io: Read + Write + Seek + Send + Sync> ReadableStorage for RwIoStorage<Io> 
     }
 
     fn get_size(&self) -> u64 {
-        let mut inner = self.0.lock().unwrap();
+        let inner = self.0.lock().unwrap();
         inner.size
     }
 }

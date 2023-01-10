@@ -13,7 +13,7 @@ pub trait BlockTransform: Clone + Send + Sync {
     fn transform_write(&self, block: &mut [u8], block_index: u64);
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BlockTransformStorage<S: ReadableStorage, T: BlockTransform> {
     storage: S,
     transform: T,
@@ -70,7 +70,7 @@ impl<S: ReadableStorage, T: BlockTransform> ReadableStorage for BlockTransformSt
 }
 
 impl<S: Storage, T: BlockTransform> Storage for BlockTransformStorage<S, T> {
-    fn write(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
+    fn write(&self, _offset: u64, _buf: &[u8]) -> Result<(), StorageError> {
         todo!()
 
         // this impl is untested!!
