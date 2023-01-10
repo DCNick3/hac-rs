@@ -4,7 +4,9 @@ use crate::fs::romfs::structs::{
     DirectoryRomEntry, FileRomEntry, FindPosition, RomFileInfo, RomFsHeader,
 };
 use crate::fs::romfs::tables::HierarchicalRomTables;
-use crate::fs::storage::{ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage};
+use crate::fs::storage::{
+    ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, SliceStorageError,
+};
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::fmt::Debug;
@@ -14,20 +16,28 @@ mod structs;
 mod tables;
 
 #[derive(Snafu, Debug)]
-pub enum RomFsError {
-    Parse {
-        source: binrw::Error,
-    },
-    Slice {
-        source: crate::fs::storage::SliceStorageError,
-    },
+pub enum RomFsParseError {
+    Parse { source: binrw::Error },
+    Slice { source: SliceStorageError },
 }
 
-#[derive(Debug)]
+#[derive(Snafu, Debug)]
+pub struct RomfsOpenError {
+    source: SliceStorageError,
+}
+
 pub struct RomFileSystem<S: ReadableStorage> {
     storage: SharedStorage<S>,
     table: HierarchicalRomTables,
     data_offset: u64,
+}
+
+impl<S: ReadableStorage + Debug> Debug for RomFileSystem<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RomFileSystem")
+            .field("storage", &self.storage)
+            .finish()
+    }
 }
 
 pub type FileStorage<S> = SliceStorage<SharedStorage<S>>;
@@ -63,6 +73,7 @@ impl<'a, S: ReadableStorage> Debug for File<'a, S> {
 }
 
 // TODO specialized iterators for "only files" and "only directories" cases
+#[derive(Debug)]
 pub struct DirectoryIter<'a, S: ReadableStorage> {
     fs: &'a RomFileSystem<S>,
     position: FindPosition,
@@ -92,7 +103,7 @@ impl<'a, S: ReadableStorage> Iterator for DirectoryIter<'a, S> {
 }
 
 impl<S: ReadableStorage> RomFileSystem<S> {
-    pub fn new(storage: S) -> Result<Self, RomFsError> {
+    pub fn new(storage: S) -> Result<Self, RomFsParseError> {
         let storage = storage.shared();
         let mut io = storage.clone().buf_read();
 
@@ -184,7 +195,7 @@ impl<'a, S: ReadableStorage> ReadableDirectory for Directory<'a, S> {
 
 impl<'a, S: ReadableStorage> ReadableFile for File<'a, S> {
     type Storage = FileStorage<S>;
-    type Error = RomFsError;
+    type Error = RomfsOpenError;
 
     fn name(&self) -> &str {
         self.name
@@ -198,6 +209,6 @@ impl<'a, S: ReadableStorage> ReadableFile for File<'a, S> {
         let storage = self.fs.storage.clone();
         let offset = self.info.offset + self.fs.data_offset;
         let size = self.info.size;
-        SliceStorage::new(storage, offset, size).context(SliceSnafu)
+        SliceStorage::new(storage, offset, size).context(RomfsOpenSnafu)
     }
 }

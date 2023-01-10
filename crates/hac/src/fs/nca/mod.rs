@@ -1,12 +1,13 @@
 mod crypt_storage;
+mod filesystem;
 mod structs;
 mod verification_storage;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
 use crate::fs::nca::structs::{
-    IntegrityInfo, NcaContentType, NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic,
-    NcaSectionType,
+    IntegrityInfo, NcaContentType, NcaEncryptionType, NcaFormatType, NcaFsHeader, NcaHeader,
+    NcaMagic, NcaSectionType,
 };
 use crate::fs::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
@@ -15,6 +16,7 @@ use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
 
+use crate::fs::nca::filesystem::NcaFileSystem;
 pub use crypt_storage::NcaCryptStorage;
 pub use verification_storage::{IntegrityCheckLevel, NcaVerificationStorage};
 
@@ -317,6 +319,26 @@ impl<S: ReadableStorage> Nca<S> {
                         // -1 because the last level is the master hash
                         NcaVerificationStorage::new_ivfc_verification_storage(storage, master_hash, s.level_count - 1, s.level_info, integrity_level)
                             .expect("FS header specifies invalid hash level offsets for IVFC integrity verification")
+                    }
+                }
+            })
+    }
+
+    pub fn get_section_fs(
+        &self,
+        index: usize,
+        integrity_level: IntegrityCheckLevel,
+    ) -> Option<NcaFileSystem<NcaVerificationStorage<RawDecryptedSectionStorage<S>>>> {
+        self.get_section_storage(index, integrity_level)
+            .map(|storage| {
+                let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
+
+                match fs_header.format_type {
+                    NcaFormatType::Romfs => {
+                        NcaFileSystem::new_romfs(storage).expect("invalid ROMFS header")
+                    }
+                    NcaFormatType::Pfs0 => {
+                        NcaFileSystem::new_pfs(storage).expect("invalid PFS0 header")
                     }
                 }
             })

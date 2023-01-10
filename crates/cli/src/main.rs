@@ -1,12 +1,10 @@
 use hac::crypto::keyset::KeySet;
 use hac::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use hac::fs::nca::{IntegrityCheckLevel, Nca};
-use hac::fs::pfs::PartitionFileSystem;
-use hac::fs::romfs;
-use hac::fs::romfs::RomFileSystem;
-use hac::fs::storage::{ReadableStorage, ReadableStorageExt};
+use hac::fs::storage::ReadableStorageExt;
 use std::path::{Path, PathBuf};
 
+#[allow(unused)]
 fn walk_fs(root_dir: impl ReadableDirectory, depth: usize) {
     for entry in root_dir.entries() {
         match entry {
@@ -33,7 +31,7 @@ fn extract_fs(root_dir: impl ReadableDirectory, path: &Path) {
             Entry::File(file) => {
                 let path = path.join(file.name());
                 let storage = file.storage().unwrap();
-                println!("Extracting {}...", path.display());
+                // println!("Extracting {}...", path.display());
                 storage.save_to_file(path).unwrap();
             }
         }
@@ -50,45 +48,26 @@ fn main() {
 
     println!("{:#?}", nca);
 
-    let storage = nca
-        .get_section_storage(0, IntegrityCheckLevel::Full)
-        .unwrap();
-    // measure time it took us to write the file
     let start = std::time::Instant::now();
-    storage.save_to_file(base_name.clone() + ".0").unwrap();
+    let fs0 = nca.get_section_fs(0, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs0.root(), &PathBuf::from(base_name.clone() + ".0dir"));
     let duration = start.elapsed();
 
     println!("Written the section 0 in {:?}", duration);
 
-    let fs0 = PartitionFileSystem::new(storage).unwrap();
-
-    extract_fs(fs0.root(), &PathBuf::from(base_name.clone() + ".0dir"));
-
-    let storage = nca
-        .get_section_storage(1, IntegrityCheckLevel::Full)
-        .unwrap();
     // measure time it took us to write the file
     let start = std::time::Instant::now();
-    storage.save_to_file(base_name.clone() + ".1").unwrap();
+    let fs1 = nca.get_section_fs(1, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
     let duration = start.elapsed();
 
     println!("Written the section 1 in {:?}", duration);
 
-    let fs1 = RomFileSystem::new(storage).unwrap();
-
-    extract_fs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
-
-    let storage = nca
-        .get_section_storage(2, IntegrityCheckLevel::Full)
-        .unwrap();
     // measure time it took us to write the file
     let start = std::time::Instant::now();
-    storage.save_to_file(base_name.clone() + ".2").unwrap();
+    let fs2 = nca.get_section_fs(2, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs2.root(), &PathBuf::from(base_name.clone() + ".2dir"));
     let duration = start.elapsed();
 
     println!("Written the section 2 in {:?}", duration);
-
-    let fs2 = PartitionFileSystem::new(storage).unwrap();
-
-    extract_fs(fs2.root(), &PathBuf::from(base_name.clone() + ".2dir"));
 }

@@ -27,6 +27,7 @@ struct FileInfo {
     size: u64,
 }
 
+#[derive(Debug)]
 pub struct PartitionFileSystem<S: ReadableStorage> {
     storage: SharedStorage<S>,
     files: HashMap<String, FileInfo>,
@@ -47,6 +48,12 @@ pub struct File<'a, S: ReadableStorage> {
     info: FileInfo,
 }
 
+impl<'a, S: ReadableStorage> Debug for Directory<'a, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Directory").finish()
+    }
+}
+
 impl<'a, S: ReadableStorage> Debug for File<'a, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PartitionFileSystemFile")
@@ -57,6 +64,7 @@ impl<'a, S: ReadableStorage> Debug for File<'a, S> {
     }
 }
 
+#[derive(Debug)]
 pub struct DirectoryIter<'a, S: ReadableStorage> {
     fs: &'a PartitionFileSystem<S>,
     iter: std::collections::hash_map::Iter<'a, String, FileInfo>,
