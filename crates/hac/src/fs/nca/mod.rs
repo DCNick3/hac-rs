@@ -1,12 +1,13 @@
 mod crypt_storage;
 mod structs;
+mod verification_storage;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
 use crate::fs::nca::structs::{NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
 use crate::fs::storage::block_transforms::AesCtrBlockTransform;
 use crate::fs::storage::{
-    AesCtrStorage, ReadableStorage, ReadableStorageExt, SliceStorage, StorageError,
+    AesCtrStorage, ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
 };
 use crate::hexstring::HexData;
 use binrw::BinRead;
@@ -74,7 +75,7 @@ enum NcaContentKeys {
 
 #[derive(Debug)]
 pub struct Nca<S: ReadableStorage> {
-    storage: S,
+    storage: SharedStorage<S>,
     headers: AllNcaHeaders,
     content_key: NcaContentKeys,
 }
@@ -82,6 +83,9 @@ pub struct Nca<S: ReadableStorage> {
 const ALL_HEADERS_SIZE: usize = 0xc00;
 const NCA_HEADER_SIZE: usize = 0x400;
 const HEADER_SECTOR_SIZE: usize = 0x200;
+
+type RawEncryptedSectionStorage<S> = SliceStorage<SharedStorage<S>>;
+type RawDecryptedSectionStorage<S> = NcaCryptStorage<RawEncryptedSectionStorage<S>>;
 
 impl<S: ReadableStorage> Nca<S> {
     pub fn new(key_set: &KeySet, storage: S) -> Result<Self, NcaError> {
@@ -112,7 +116,7 @@ impl<S: ReadableStorage> Nca<S> {
         };
 
         Ok(Self {
-            storage,
+            storage: SharedStorage::new(storage),
             headers,
             content_key,
         })
@@ -203,7 +207,10 @@ impl<S: ReadableStorage> Nca<S> {
         ))
     }
 
-    pub fn get_raw_encrypted_section_storage(&self, index: usize) -> Option<SliceStorage<S>> {
+    pub fn get_raw_encrypted_section_storage(
+        &self,
+        index: usize,
+    ) -> Option<RawEncryptedSectionStorage<S>> {
         let section_entry = self.headers.nca_header.section_table[index];
 
         if !section_entry.is_enabled {
@@ -233,7 +240,7 @@ impl<S: ReadableStorage> Nca<S> {
     pub fn get_raw_decrypted_section_storage(
         &self,
         index: usize,
-    ) -> Option<NcaCryptStorage<SliceStorage<S>>> {
+    ) -> Option<RawDecryptedSectionStorage<S>> {
         self.get_raw_encrypted_section_storage(index)
             .map(|storage| {
                 let fs_header = self.headers.fs_headers[index].as_ref().unwrap();

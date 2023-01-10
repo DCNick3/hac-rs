@@ -1,8 +1,7 @@
 use crate::fs::storage::{ReadableStorage, Storage, StorageError};
 use snafu::Snafu;
 
-#[derive(Clone)]
-pub struct SliceStorage<S: Clone> {
+pub struct SliceStorage<S> {
     storage: S,
     offset: u64,
     size: u64,

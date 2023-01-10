@@ -2,13 +2,13 @@ use snafu::ResultExt;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use super::{IoSnafu, ReadableStorage, Storage, StorageError};
 
 #[derive(Debug)]
 pub struct RoIoStorage<Io: Read + Seek + Send + Sync> {
-    io: Arc<Mutex<Io>>,
+    io: Mutex<Io>,
     size: u64,
 }
 
@@ -20,7 +20,7 @@ impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
         io.seek(SeekFrom::Start(0))
             .context(IoSnafu { operation: "seek" })?;
         Ok(Self {
-            io: Arc::new(Mutex::new(io)),
+            io: Mutex::new(io),
             size,
         })
     }
@@ -31,15 +31,6 @@ impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
             Err(StorageError::OutOfBounds {})
         } else {
             Ok(())
-        }
-    }
-}
-
-impl<Io: Read + Seek + Send + Sync> Clone for RoIoStorage<Io> {
-    fn clone(&self) -> Self {
-        Self {
-            io: self.io.clone(),
-            size: self.size,
         }
     }
 }
@@ -93,13 +84,7 @@ impl<Io: Read + Write + Seek + Send + Sync> RwIoStorageInner<Io> {
 /// A storage that wraps an IO object, allowing read and write access.
 ///
 /// Note that this storage does not implement resizing correctly, as there is no trait for that =(.
-pub struct RwIoStorage<Io: Read + Write + Seek + Send + Sync>(Arc<Mutex<RwIoStorageInner<Io>>>);
-
-impl<Ioo: Read + Write + Seek + Send + Sync> Clone for RwIoStorage<Ioo> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
+pub struct RwIoStorage<Io: Read + Write + Seek + Send + Sync>(Mutex<RwIoStorageInner<Io>>);
 
 impl<Io: Read + Write + Seek + Send + Sync> RwIoStorage<Io> {
     pub fn new(mut io: Io) -> Result<Self, StorageError> {
@@ -108,7 +93,7 @@ impl<Io: Read + Write + Seek + Send + Sync> RwIoStorage<Io> {
             .context(IoSnafu { operation: "seek" })?;
         io.seek(SeekFrom::Start(0))
             .context(IoSnafu { operation: "seek" })?;
-        Ok(Self(Arc::new(Mutex::new(RwIoStorageInner { io, size }))))
+        Ok(Self(Mutex::new(RwIoStorageInner { io, size })))
     }
 }
 

@@ -12,6 +12,7 @@ snafu = { version = "0.7.4", features = [] }
 serde = { version = "1.0.152", features = ["derive"] }
 dirs-next = "2.0.0"
 binrw = "0.10.0"
+num = "0.4.0"
 
 cipher = "0.4.3"
 aes = "0.8.2"

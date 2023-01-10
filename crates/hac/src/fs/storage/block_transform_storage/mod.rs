@@ -38,15 +38,9 @@ impl<S: ReadableStorage, T: BlockTransform> ReadableStorage for BlockTransformSt
         let mut tmp = vec![0; 1024 * 64];
         assert_eq!(tmp.len() % T::BLOCK_SIZE, 0);
         let block_offset = offset % T::BLOCK_SIZE as u64;
-        assert_eq!(
-            block_offset, 0,
-            "Unaligned reads are not supported (at least for now)"
-        );
-        assert_eq!(
-            buf.len() % T::BLOCK_SIZE,
-            0,
-            "Unaligned reads are not supported (at least for now)"
-        );
+        if block_offset != 0 || buf.len() % T::BLOCK_SIZE != 0 {
+            return Err(StorageError::UnalignedAccess {});
+        }
         let mut buf_offset = 0;
         while buf_offset < buf.len() {
             let block_index = (offset + buf_offset as u64) / T::BLOCK_SIZE as u64;
