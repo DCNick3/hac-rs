@@ -10,6 +10,7 @@ mod io_storage;
 mod linear_adapter_storage;
 mod shared_storage;
 mod slice_storage;
+mod storage_io;
 mod vec_storage;
 
 pub use block_adapter_storage::BlockAdapterStorage;
@@ -22,6 +23,7 @@ pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
 pub use linear_adapter_storage::LinearAdapterStorage;
 pub use shared_storage::SharedStorage;
 pub use slice_storage::{SliceStorage, SliceStorageError};
+pub use storage_io::StorageIo;
 pub use vec_storage::VecStorage;
 
 pub trait ReadableStorage: Send + Sync {
@@ -88,6 +90,13 @@ pub trait ReadableStorageExt: ReadableStorage {
         Self: Sized,
     {
         SharedStorage::new(self)
+    }
+
+    fn io(self) -> StorageIo<Self>
+    where
+        Self: Sized,
+    {
+        StorageIo::new(self)
     }
 
     fn copy_to<S: Storage>(&self, other: &S) -> Result<(), StorageError> {

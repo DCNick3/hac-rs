@@ -4,7 +4,10 @@ mod verification_storage;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
-use crate::fs::nca::structs::{IntegrityInfo, NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
+use crate::fs::nca::structs::{
+    IntegrityInfo, NcaContentType, NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic,
+    NcaSectionType,
+};
 use crate::fs::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
 };
@@ -113,6 +116,16 @@ impl<S: ReadableStorage> Nca<S> {
             // TODO: decrypt the content key from key area
             todo!()
         };
+
+        let expected_session_count = if headers.nca_header.content_type == NcaContentType::Program {
+            3
+        } else {
+            1
+        };
+        assert_eq!(
+            headers.fs_headers.iter().flatten().count(),
+            expected_session_count
+        );
 
         Ok(Self {
             storage: SharedStorage::new(storage),
@@ -307,5 +320,18 @@ impl<S: ReadableStorage> Nca<S> {
                     }
                 }
             })
+    }
+
+    pub fn get_section_type(&self, index: usize) -> Option<NcaSectionType> {
+        use NcaContentType::Program;
+        use NcaSectionType::{Code, Data, Logo};
+
+        match (index, self.headers.nca_header.content_type) {
+            (0, Program) => Some(Code),
+            (1, Program) => Some(Data),
+            (2, Program) => Some(Logo),
+            (0, _) => Some(Data),
+            _ => None,
+        }
     }
 }
