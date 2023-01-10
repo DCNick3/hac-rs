@@ -1,5 +1,6 @@
 mod structs;
 
+use crate::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use crate::fs::pfs::structs::{get_string, PartitionFsHeader};
 use crate::fs::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, SliceStorageError,
@@ -8,6 +9,7 @@ use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::io::Seek;
 
 #[derive(Snafu, Debug)]
 pub struct PfsParseError {
@@ -28,30 +30,24 @@ struct FileInfo {
 pub struct PartitionFileSystem<S: ReadableStorage> {
     storage: SharedStorage<S>,
     files: HashMap<String, FileInfo>,
+    header_size: u64,
 }
 
 pub type FileStorage<S> = SliceStorage<SharedStorage<S>>;
 
-pub struct PartitionFileSystemFile<'a, S: ReadableStorage> {
+// this directory is kinda fake, the PFS is flat
+// so, this directory is always the root directory
+pub struct Directory<'a, S: ReadableStorage> {
+    fs: &'a PartitionFileSystem<S>,
+}
+
+pub struct File<'a, S: ReadableStorage> {
     fs: &'a PartitionFileSystem<S>,
     filename: &'a str,
     info: FileInfo,
 }
 
-impl<'a, S: ReadableStorage> PartitionFileSystemFile<'a, S> {
-    pub fn filename(&self) -> &str {
-        self.filename
-    }
-
-    pub fn storage(&self) -> Result<FileStorage<S>, PfsOpenError> {
-        let storage = self.fs.storage.clone();
-        let offset = self.info.offset;
-        let size = self.info.size;
-        SliceStorage::new(storage, offset, size).context(PfsOpenSnafu)
-    }
-}
-
-impl<'a, S: ReadableStorage> Debug for PartitionFileSystemFile<'a, S> {
+impl<'a, S: ReadableStorage> Debug for File<'a, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PartitionFileSystemFile")
             .field("filename", &self.filename)
@@ -61,22 +57,22 @@ impl<'a, S: ReadableStorage> Debug for PartitionFileSystemFile<'a, S> {
     }
 }
 
-pub struct PartitionFileSystemIter<'a, S: ReadableStorage> {
+pub struct DirectoryIter<'a, S: ReadableStorage> {
     fs: &'a PartitionFileSystem<S>,
     iter: std::collections::hash_map::Iter<'a, String, FileInfo>,
 }
 
-impl<'a, S: ReadableStorage> Iterator for PartitionFileSystemIter<'a, S> {
-    type Item = PartitionFileSystemFile<'a, S>;
+impl<'a, S: ReadableStorage> Iterator for DirectoryIter<'a, S> {
+    type Item = Entry<File<'a, S>, Directory<'a, S>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|(filename, &info)| PartitionFileSystemFile {
+        self.iter.next().map(|(filename, &info)| {
+            Entry::File(File {
                 fs: self.fs,
                 filename: filename.as_str(),
                 info,
             })
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -110,28 +106,78 @@ impl<S: ReadableStorage> PartitionFileSystem<S> {
             })
             .collect();
 
+        let header_size = io.stream_position().unwrap();
+
         let storage = io.into_inner().into_inner().shared();
-        Ok(Self { storage, files })
+        Ok(Self {
+            storage,
+            files,
+            header_size,
+        })
+    }
+}
+
+impl<S: ReadableStorage> ReadableFileSystem for PartitionFileSystem<S> {
+    type File<'a> = File<'a, S> where Self: 'a;
+    type Directory<'a> = Directory<'a, S> where Self: 'a;
+
+    fn root(&self) -> Self::Directory<'_> {
+        Directory { fs: self }
     }
 
-    pub fn get_file(&self, path: &str) -> Option<PartitionFileSystemFile<S>> {
+    fn open_directory(&self, path: &str) -> Option<Self::Directory<'_>> {
+        assert!(path.starts_with('/'));
+        if path == "/" {
+            Some(self.root())
+        } else {
+            None
+        }
+    }
+
+    fn open_file(&self, path: &str) -> Option<Self::File<'_>> {
+        let path = path.strip_prefix('/').unwrap();
         self.files
             .get_key_value(path)
-            .map(|(filename, &info)| PartitionFileSystemFile {
+            .map(|(filename, &info)| File {
                 fs: self,
-                filename: filename.as_str(),
+                filename,
                 info,
             })
     }
+}
 
-    pub fn get_file_storage(&self, path: &str) -> Result<Option<FileStorage<S>>, PfsOpenError> {
-        self.get_file(path).map(|file| file.storage()).transpose()
+impl<'a, S: ReadableStorage> ReadableDirectory for Directory<'a, S> {
+    type File = File<'a, S>;
+    type Iter = DirectoryIter<'a, S>;
+
+    fn name(&self) -> &str {
+        ""
     }
 
-    pub fn iter(&self) -> PartitionFileSystemIter<S> {
-        PartitionFileSystemIter {
-            fs: self,
-            iter: self.files.iter(),
+    fn entries(&self) -> Self::Iter {
+        DirectoryIter {
+            fs: self.fs,
+            iter: self.fs.files.iter(),
         }
+    }
+}
+
+impl<'a, S: ReadableStorage> ReadableFile for File<'a, S> {
+    type Storage = FileStorage<S>;
+    type Error = PfsOpenError;
+
+    fn name(&self) -> &str {
+        self.filename
+    }
+
+    fn size(&self) -> u64 {
+        self.info.size
+    }
+
+    fn storage(&self) -> Result<Self::Storage, Self::Error> {
+        let storage = self.fs.storage.clone();
+        let offset = self.info.offset + self.fs.header_size;
+        let size = self.info.size;
+        storage.slice(offset, size).context(PfsOpenSnafu)
     }
 }

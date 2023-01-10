@@ -1,3 +1,4 @@
+use crate::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use crate::fs::romfs::dictionary::RomFsDictionary;
 use crate::fs::romfs::structs::{
     DirectoryRomEntry, FileRomEntry, FindPosition, RomFileInfo, RomFsHeader,
@@ -43,32 +44,6 @@ pub struct File<'a, S: ReadableStorage> {
     info: RomFileInfo,
 }
 
-impl<'a, S: ReadableStorage> Directory<'a, S> {
-    pub fn name(&self) -> &str {
-        self.name
-    }
-
-    pub fn entries(&self) -> DirectoryIter<'a, S> {
-        DirectoryIter {
-            fs: self.fs,
-            position: self.position,
-        }
-    }
-}
-
-impl<'a, S: ReadableStorage> File<'a, S> {
-    pub fn name(&self) -> &str {
-        self.name
-    }
-
-    pub fn storage(&self) -> Result<FileStorage<S>, RomFsError> {
-        let storage = self.fs.storage.clone();
-        let offset = self.info.offset + self.fs.data_offset;
-        let size = self.info.size;
-        SliceStorage::new(storage, offset, size).context(SliceSnafu)
-    }
-}
-
 impl<'a, S: ReadableStorage> Debug for Directory<'a, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Directory")
@@ -87,12 +62,6 @@ impl<'a, S: ReadableStorage> Debug for File<'a, S> {
     }
 }
 
-#[derive(Debug)]
-pub enum Entry<'a, S: ReadableStorage> {
-    Directory(Directory<'a, S>),
-    File(File<'a, S>),
-}
-
 // TODO specialized iterators for "only files" and "only directories" cases
 pub struct DirectoryIter<'a, S: ReadableStorage> {
     fs: &'a RomFileSystem<S>,
@@ -100,7 +69,7 @@ pub struct DirectoryIter<'a, S: ReadableStorage> {
 }
 
 impl<'a, S: ReadableStorage> Iterator for DirectoryIter<'a, S> {
-    type Item = Entry<'a, S>;
+    type Item = Entry<File<'a, S>, Directory<'a, S>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((name, position)) = self.fs.table.next_directory(&mut self.position) {
@@ -160,8 +129,13 @@ impl<S: ReadableStorage> RomFileSystem<S> {
             data_offset: header.data_offset,
         })
     }
+}
 
-    pub fn root(&self) -> Directory<S> {
+impl<S: ReadableStorage> ReadableFileSystem for RomFileSystem<S> {
+    type File<'a> = File<'a, S> where Self: 'a;
+    type Directory<'a> = Directory<'a, S> where Self: 'a;
+
+    fn root(&self) -> Self::Directory<'_> {
         let (name, position) = self.table.get_directory("/").unwrap();
 
         Directory {
@@ -171,7 +145,7 @@ impl<S: ReadableStorage> RomFileSystem<S> {
         }
     }
 
-    pub fn open_directory(&self, path: &str) -> Option<Directory<S>> {
+    fn open_directory(&self, path: &str) -> Option<Self::Directory<'_>> {
         let (name, position) = self.table.get_directory(path)?;
 
         Some(Directory {
@@ -181,7 +155,7 @@ impl<S: ReadableStorage> RomFileSystem<S> {
         })
     }
 
-    pub fn open_file(&self, path: &str) -> Option<File<S>> {
+    fn open_file(&self, path: &str) -> Option<Self::File<'_>> {
         let (name, info) = self.table.get_file(path)?;
 
         Some(File {
@@ -189,5 +163,41 @@ impl<S: ReadableStorage> RomFileSystem<S> {
             name,
             info,
         })
+    }
+}
+
+impl<'a, S: ReadableStorage> ReadableDirectory for Directory<'a, S> {
+    type File = File<'a, S>;
+    type Iter = DirectoryIter<'a, S>;
+
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn entries(&self) -> Self::Iter {
+        DirectoryIter {
+            fs: self.fs,
+            position: self.position,
+        }
+    }
+}
+
+impl<'a, S: ReadableStorage> ReadableFile for File<'a, S> {
+    type Storage = FileStorage<S>;
+    type Error = RomFsError;
+
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn size(&self) -> u64 {
+        self.info.size
+    }
+
+    fn storage(&self) -> Result<FileStorage<S>, Self::Error> {
+        let storage = self.fs.storage.clone();
+        let offset = self.info.offset + self.fs.data_offset;
+        let size = self.info.size;
+        SliceStorage::new(storage, offset, size).context(SliceSnafu)
     }
 }
