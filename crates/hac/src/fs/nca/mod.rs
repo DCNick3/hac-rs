@@ -1,8 +1,13 @@
 mod structs;
 
 use crate::crypto::keyset::KeySet;
-use crate::fs::nca::structs::{NcaFsHeader, NcaHeader, NcaMagic};
-use crate::fs::storage::{ReadableStorage, ReadableStorageExt, SliceStorage, StorageError};
+use crate::crypto::{AesKey, AesXtsKey};
+use crate::fs::nca::structs::{NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
+use crate::fs::storage::block_transforms::AesCtrBlockTransform;
+use crate::fs::storage::{
+    AesCtrStorage, ReadableStorage, ReadableStorageExt, SliceStorage, StorageError,
+};
+use crate::hexstring::HexData;
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
@@ -14,6 +19,9 @@ pub enum NcaError {
     },
     MissingKey {
         source: crate::crypto::keyset::MissingKeyError,
+    },
+    MissingTitleKey {
+        source: crate::crypto::keyset::MissingTitleKeyError,
     },
     NcaHeaderParsing {
         source: binrw::Error,
@@ -37,11 +45,35 @@ struct AllNcaHeaders {
     pub fs_headers: [Option<NcaFsHeader>; 4],
 }
 
+impl AllNcaHeaders {
+    pub fn has_rights_id(&self) -> bool {
+        !self.nca_header.rights_id.is_empty()
+    }
+
+    pub fn master_key_revision(&self) -> u8 {
+        std::cmp::max(
+            self.nca_header.key_generation_1,
+            self.nca_header.key_generation_2,
+        )
+        .saturating_sub(1)
+    }
+}
+
+#[derive(Debug)]
+enum NcaContentKeys {
+    /// NCA is decrypted, no keys are needed.
+    Plaintext,
+    /// Keys that were decrypted from the key area for Normal crypto
+    KeyArea { ctr: AesKey, xts: AesXtsKey },
+    /// Decrypted key for the RightsId crypto obtained externally
+    RightsId(AesKey),
+}
+
 #[derive(Debug)]
 pub struct Nca<S: ReadableStorage> {
     storage: S,
     headers: AllNcaHeaders,
-    is_decrypted: bool,
+    content_key: NcaContentKeys,
 }
 
 const ALL_HEADERS_SIZE: usize = 0xc00;
@@ -59,10 +91,27 @@ impl<S: ReadableStorage> Nca<S> {
             });
         }
 
+        let content_key = if is_decrypted {
+            NcaContentKeys::Plaintext
+        } else if headers.has_rights_id() {
+            let title_key = key_set
+                .title_key(&headers.nca_header.rights_id)
+                .context(MissingTitleKeySnafu)?;
+
+            let title_kek = key_set
+                .title_kek(headers.master_key_revision())
+                .context(MissingKeySnafu)?;
+
+            NcaContentKeys::RightsId(title_key.decrypt(title_kek))
+        } else {
+            // TODO: decrypt the content key from key area
+            todo!()
+        };
+
         Ok(Self {
             storage,
             headers,
-            is_decrypted,
+            content_key,
         })
     }
 
@@ -160,5 +209,35 @@ impl<S: ReadableStorage> Nca<S> {
                 .slice(section_entry.start.into(), section_entry.size())
                 .expect("BUG: invalid section slice"),
         )
+    }
+
+    pub fn get_decrypted_section_storage(
+        &self,
+        index: usize,
+    ) -> Option<AesCtrStorage<SliceStorage<S>>> {
+        self.get_encrypted_section_storage(index).map(|storage| {
+            let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
+
+            // base nonce: first 8 bytes are specified in the fs header, the rest is big-endian offset in the section counter in AES blocks
+            // the section decryptor itself will add the inner offset
+            let mut nonce = [0; 0x10];
+            nonce[..8].copy_from_slice(&fs_header.upper_counter.to_be_bytes());
+            let start_offset: u64 = self.headers.nca_header.section_table[index].start.into();
+            nonce[8..].copy_from_slice(&(start_offset / 16).to_be_bytes());
+
+            assert_eq!(
+                fs_header.encryption_type,
+                NcaEncryptionType::AesCtr,
+                "Only AES-CTR encryption is supported for now"
+            );
+            let key = match self.content_key {
+                NcaContentKeys::Plaintext => {
+                    todo!("We need some way to return a no-op decryptor?")
+                }
+                NcaContentKeys::KeyArea { ctr, .. } | NcaContentKeys::RightsId(ctr) => ctr,
+            };
+
+            AesCtrStorage::new(storage, AesCtrBlockTransform::new(key, HexData(nonce)))
+        })
     }
 }

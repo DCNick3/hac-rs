@@ -1,8 +1,8 @@
-use crate::crypto::{AesKey, AesXtsKey, KeyParseError};
+use crate::crypto::{AesKey, AesXtsKey, KeyParseError, RightsId, TitleKey};
 use ini::Properties;
 use snafu::{ResultExt, Snafu};
+use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -10,11 +10,12 @@ pub struct KeySet {
     // I don't want to deal with all key derivation machinery right now, so I'll just add the keys I need for now.
     header_key: Option<AesXtsKey>,
     title_kek: [Option<AesKey>; 0x10],
+    title_keys: HashMap<RightsId, TitleKey>,
 }
 
 pub struct KeyName {
     pub key_name: &'static str,
-    pub index: Option<usize>,
+    pub index: Option<u8>,
 }
 
 impl Debug for KeyName {
@@ -41,14 +42,36 @@ pub struct MissingKeyError {
 #[derive(Snafu, Debug)]
 pub enum KeySetParseError {
     #[snafu(display("Could not parse keyset file at line {} column {}: {}", line, col, msg))]
-    FileParse {
+    CommonKeysFileParse {
         line: usize,
         col: usize,
         msg: String,
     },
+    #[snafu(display(
+        "Could not parse title keys file at line {} column {}: {}",
+        line,
+        col,
+        msg
+    ))]
+    TitleKeysFileParse {
+        line: usize,
+        col: usize,
+        msg: String,
+    },
+
     #[snafu(display("Could not parse key {}: {}", key_name, source))]
     KeyParse {
         key_name: KeyName,
+        source: KeyParseError,
+    },
+    #[snafu(display("Could not parse rightsid {}: {}", rights_id, source))]
+    RightsIdParse {
+        rights_id: String,
+        source: KeyParseError,
+    },
+    #[snafu(display("Could not parse title key for rightsid {:?}: {}", rights_id, source))]
+    TitleKeyParse {
+        rights_id: RightsId,
         source: KeyParseError,
     },
 }
@@ -60,57 +83,72 @@ pub enum SystemKeysetError {
     Io { source: std::io::Error },
 }
 
+#[derive(Snafu, Debug)]
+pub struct MissingTitleKeyError {
+    pub rights_id: RightsId,
+}
+
 impl KeySet {
     /// Loads a keyset from a file. The file format is the same as the one used by Hactool.
     /// By default the file is searched in the ".switch" dir in
     ///     the user's home directory and in "switch" in user's config directory (according to `dirs-next` crate).
     ///
     /// One can also provide a path to a custom keyset file, then the system directories are ignored.
-    pub fn from_system(key_path: Option<&Path>) -> Result<Self, SystemKeysetError> {
-        let paths = if let Some(key_path) = key_path {
+    pub fn from_system(keys_dir: Option<&Path>) -> Result<Self, SystemKeysetError> {
+        let paths = if let Some(key_path) = keys_dir {
             vec![Some(key_path.into())]
         } else {
             vec![
-                dirs_next::config_dir().map(|mut v| {
-                    v.push("switch");
-                    v.push("prod.keys");
-                    v
-                }),
-                dirs_next::home_dir().map(|mut v| {
-                    v.push(".switch");
-                    v.push("prod.keys");
-                    v
-                }),
+                dirs_next::config_dir().map(|v| v.join("switch")),
+                dirs_next::home_dir().map(|v| v.join(".switch")),
             ]
         }
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
 
-        for path in paths.iter() {
-            match std::fs::read_to_string(path) {
-                Ok(r) => return Self::from_file_contents(&r).context(ParseSnafu {}),
-                Err(e) if e.kind() == ErrorKind::NotFound => {
-                    continue;
-                }
-                e => {
-                    e.context(IoSnafu)?;
+        let find_file = |file_name: &str| -> Result<PathBuf, SystemKeysetError> {
+            for path in &paths {
+                let file_path = path.join(file_name);
+                if file_path.exists() {
+                    return Ok(file_path);
                 }
             }
-        }
 
-        Err(SystemKeysetError::NotFound { tried: paths })
+            Err(SystemKeysetError::NotFound {
+                tried: paths
+                    .clone()
+                    .into_iter()
+                    .map(|p| p.join(file_name))
+                    .collect(),
+            })
+        };
+
+        let prod_keys_path = find_file("prod.keys")?;
+        let title_keys_path = find_file("title.keys").ok();
+
+        let prod_keys = std::fs::read_to_string(&prod_keys_path).context(IoSnafu)?;
+        let title_keys = title_keys_path
+            .as_ref()
+            .map(|p| std::fs::read_to_string(p).context(IoSnafu))
+            .transpose()?;
+
+        Self::from_file_contents(&prod_keys, title_keys.as_deref().unwrap_or(""))
+            .context(ParseSnafu {})
     }
 
-    pub fn from_file_contents(contents: &str) -> Result<Self, KeySetParseError> {
-        let ini = ini::Ini::load_from_str_noescape(contents).map_err(|e| {
-            KeySetParseError::FileParse {
+    pub fn from_file_contents(
+        common_keys: &str,
+        title_keys: &str,
+    ) -> Result<Self, KeySetParseError> {
+        let common_keys = ini::Ini::load_from_str_noescape(common_keys).map_err(|e| {
+            KeySetParseError::CommonKeysFileParse {
                 line: e.line,
                 col: e.col,
                 msg: e.msg,
             }
         })?;
-        let props = ini.general_section();
+        let common_keys = common_keys.general_section();
 
         fn parse_key<K: FromStr<Err = KeyParseError>>(
             props: &Properties,
@@ -137,7 +175,7 @@ impl KeySet {
             for (i, result) in result.iter_mut().enumerate() {
                 let key_name = KeyName {
                     key_name: name,
-                    index: Some(i),
+                    index: Some(i as u8),
                 };
                 let key = props
                     .get(&key_name.to_string())
@@ -149,9 +187,29 @@ impl KeySet {
             Ok(result)
         }
 
+        let title_keys_ini = ini::Ini::load_from_str_noescape(title_keys).map_err(|e| {
+            KeySetParseError::TitleKeysFileParse {
+                line: e.line,
+                col: e.col,
+                msg: e.msg,
+            }
+        })?;
+
+        let mut title_keys = HashMap::new();
+        for (rights_id, title_key) in title_keys_ini.general_section().iter() {
+            let rights_id = rights_id.parse().context(RightsIdParseSnafu {
+                rights_id: rights_id.to_string(),
+            })?;
+            let title_key = title_key
+                .parse()
+                .context(TitleKeyParseSnafu { rights_id })?;
+            title_keys.insert(rights_id, title_key);
+        }
+
         Ok(Self {
-            header_key: parse_key(props, "header_key")?,
-            title_kek: parse_keys(props, "titlekek")?,
+            header_key: parse_key(common_keys, "header_key")?,
+            title_kek: parse_keys(common_keys, "titlekek")?,
+            title_keys,
         })
     }
 
@@ -164,12 +222,21 @@ impl KeySet {
         })
     }
 
-    pub fn title_kek(&self, index: usize) -> Result<AesKey, MissingKeyError> {
-        self.title_kek[index].ok_or(MissingKeyError {
+    pub fn title_kek(&self, index: u8) -> Result<AesKey, MissingKeyError> {
+        self.title_kek[index as usize].ok_or(MissingKeyError {
             key_name: KeyName {
                 key_name: "title_kek",
                 index: Some(index),
             },
         })
+    }
+
+    pub fn title_key(&self, rights_id: &RightsId) -> Result<TitleKey, MissingTitleKeyError> {
+        self.title_keys
+            .get(rights_id)
+            .copied()
+            .ok_or(MissingTitleKeyError {
+                rights_id: *rights_id,
+            })
     }
 }

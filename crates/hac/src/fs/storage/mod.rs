@@ -1,10 +1,14 @@
 use snafu::Snafu;
 use std::path::Path;
 
+mod block_transform_storage;
 mod io_storage;
 mod slice_storage;
 
 use crate::fs::storage::slice_storage::SliceStorageError;
+pub use block_transform_storage::{
+    block_transforms, AesCtrStorage, BlockTransform, BlockTransformStorage,
+};
 pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
 pub use slice_storage::SliceStorage;
 

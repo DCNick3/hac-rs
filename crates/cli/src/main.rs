@@ -12,9 +12,9 @@ fn main() {
 
     println!("{:#?}", nca);
 
-    let storage = nca.get_encrypted_section_storage(0).unwrap();
+    let storage = nca.get_decrypted_section_storage(0).unwrap();
 
     storage
-        .save_to_file("test_files/de16b5aa443dd171bb90b10b88ec3d3b.0.enc")
+        .save_to_file("test_files/de16b5aa443dd171bb90b10b88ec3d3b.0")
         .unwrap();
 }

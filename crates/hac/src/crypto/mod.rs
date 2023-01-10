@@ -2,6 +2,7 @@ use crate::hexstring::HexData;
 use aes::Aes128;
 use binrw::{BinRead, BinWrite};
 use cipher::generic_array::GenericArray;
+use ctr::Ctr128BE;
 use hex::FromHexError;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
@@ -21,10 +22,30 @@ pub struct EncryptedAesKey(HexData<0x10>);
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, BinRead, BinWrite)]
 pub struct EncryptedAesXtsKey(HexData<0x20>);
 
+/// Represents an encrypted AES-128 title key.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AesKey([u8; 0x10]);
+pub struct TitleKey(HexData<0x10>);
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AesXtsKey([u8; 0x20]);
+pub struct AesKey(HexData<0x10>);
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AesXtsKey(HexData<0x20>);
+
+/// Identifies a title key.
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Serialize,
+    Deserialize,
+    BinRead,
+    BinWrite,
+)]
+pub struct RightsId(HexData<0x10>);
 
 fn parse_key(s: &str, result: &mut [u8]) -> Result<(), KeyParseError> {
     hex::decode_to_slice(s, result).map_err(|e| match e {
@@ -46,7 +67,7 @@ impl FromStr for AesKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut result = [0; 0x10];
-        parse_key(s, &mut result).map(|_| AesKey(result))
+        parse_key(s, &mut result).map(|_| AesKey(HexData(result)))
     }
 }
 
@@ -55,7 +76,86 @@ impl FromStr for AesXtsKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut result = [0; 0x20];
-        parse_key(s, &mut result).map(|_| AesXtsKey(result))
+        parse_key(s, &mut result).map(|_| AesXtsKey(HexData(result)))
+    }
+}
+
+impl FromStr for TitleKey {
+    type Err = KeyParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut result = [0; 0x10];
+        parse_key(s, &mut result).map(|_| TitleKey(HexData(result)))
+    }
+}
+
+impl FromStr for RightsId {
+    type Err = KeyParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut result = [0; 0x10];
+        parse_key(s, &mut result).map(|_| RightsId(HexData(result)))
+    }
+}
+
+impl TitleKey {
+    pub fn decrypt(&self, title_kek: AesKey) -> AesKey {
+        title_kek.derive_key(&self.0 .0)
+    }
+}
+
+impl RightsId {
+    pub fn is_empty(&self) -> bool {
+        self.0 .0.iter().all(|&x| x == 0)
+    }
+}
+
+impl AesKey {
+    pub fn derive_key(&self, source: &[u8; 0x10]) -> AesKey {
+        use cipher::{BlockDecrypt, KeyInit};
+        let mut newkey = *source;
+
+        let crypter = Aes128::new(GenericArray::from_slice(&self.0 .0));
+        crypter.decrypt_block(GenericArray::from_mut_slice(&mut newkey));
+
+        AesKey(HexData(newkey))
+    }
+
+    pub fn derive_xts_key(&self, source: &[u8; 0x20]) -> AesXtsKey {
+        use cipher::{BlockDecrypt, KeyInit};
+        let mut newkey = *source;
+
+        let crypter = Aes128::new(GenericArray::from_slice(&self.0 .0));
+        crypter.decrypt_block(GenericArray::from_mut_slice(&mut newkey[0x00..0x10]));
+        crypter.decrypt_block(GenericArray::from_mut_slice(&mut newkey[0x10..0x20]));
+
+        AesXtsKey(HexData(newkey))
+    }
+    /// Decrypt blocks in CTR mode.
+    pub fn decrypt_ctr(&self, buf: &mut [u8], ctr: &[u8; 0x10]) {
+        use cipher::{KeyIvInit, StreamCipher};
+
+        if buf.len() % 16 != 0 {
+            panic!("Length must be multiple of sectors!")
+        }
+
+        let key = GenericArray::from_slice(&self.0 .0);
+        let iv = GenericArray::from_slice(ctr);
+        let mut crypter = Ctr128BE::<Aes128>::new(key, iv);
+        crypter.apply_keystream(buf);
+    }
+
+    pub fn encrypt_ctr(&self, buf: &mut [u8], ctr: &[u8; 0x10]) {
+        use cipher::{KeyIvInit, StreamCipher};
+
+        if buf.len() % 16 != 0 {
+            panic!("Length must be multiple of sectors!")
+        }
+
+        let key = GenericArray::from_slice(&self.0 .0);
+        let iv = GenericArray::from_slice(ctr);
+        let mut crypter = Ctr128BE::<Aes128>::new(key, iv);
+        crypter.apply_keystream(buf);
     }
 }
 
@@ -74,8 +174,8 @@ impl AesXtsKey {
     fn to_crypter(&self) -> Xts128<Aes128> {
         use cipher::KeyInit;
 
-        let key1 = Aes128::new(GenericArray::from_slice(&self.0[0x00..0x10]));
-        let key2 = Aes128::new(GenericArray::from_slice(&self.0[0x10..0x20]));
+        let key1 = Aes128::new(GenericArray::from_slice(&self.0 .0[0x00..0x10]));
+        let key2 = Aes128::new(GenericArray::from_slice(&self.0 .0[0x10..0x20]));
         Xts128::<Aes128>::new(key1, key2)
     }
 

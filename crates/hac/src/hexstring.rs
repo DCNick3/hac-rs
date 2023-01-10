@@ -11,7 +11,7 @@ impl<'a> core::fmt::Debug for Hexstring<'a> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, BinRead, BinWrite)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, BinRead, BinWrite)]
 pub struct HexData<const N: usize>(pub [u8; N]);
 
 impl<const N: usize> core::fmt::Debug for HexData<N> {

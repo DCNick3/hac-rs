@@ -1,4 +1,4 @@
-use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey};
+use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey, RightsId};
 use crate::hexstring::HexData;
 use binrw::{BinRead, BinWrite};
 use std::fmt::Debug;
@@ -79,9 +79,6 @@ impl Debug for TitleId {
         write!(f, "{:016x}", self.0)
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
-pub struct RightsId(pub HexData<0x10>);
 
 #[derive(Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct SectionTableOffset(u32);
