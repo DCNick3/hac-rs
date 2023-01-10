@@ -295,9 +295,16 @@ impl<S: ReadableStorage> Nca<S> {
                             s.block_size,
                             integrity_level,
                         )
-                        .expect("PSF header specifies invalid hash level offsets")
+                        .expect("FS header specifies invalid hash level offsets for HierarchicalSha256 integrity verification")
                     }
-                    IntegrityInfo::Ivfc(_) => todo!("IntegrityInfo::Ivfc is not supported yet"),
+                    IntegrityInfo::Ivfc(s) => {
+                        assert_eq!(s.master_hash_size, 0x20);
+                        let master_hash = s.master_hash.0[..0x20].try_into().unwrap();
+
+                        // -1 because the last level is the master hash
+                        NcaVerificationStorage::new_ivfc_verification_storage(storage, master_hash, s.level_count - 1, s.level_info, integrity_level)
+                            .expect("FS header specifies invalid hash level offsets for IVFC integrity verification")
+                    }
                 }
             })
     }

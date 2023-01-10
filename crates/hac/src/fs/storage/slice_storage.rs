@@ -1,4 +1,4 @@
-use crate::fs::storage::{ReadableBlockStorage, ReadableStorage, Storage, StorageError};
+use crate::fs::storage::{ReadableStorage, Storage, StorageError};
 use snafu::Snafu;
 
 #[derive(Debug)]

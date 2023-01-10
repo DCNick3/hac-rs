@@ -127,11 +127,11 @@ impl<S: ReadableBlockStorage, H: ReadableStorage> ReadableBlockStorage
 
         if *block_status == BlockStatus::Unchecked {
             let bytes_to_hash = match self.ty {
-                IntegrityStorageType::PartitionFs => {
+                IntegrityStorageType::HierarchicalSha256 => {
                     // PartitionFs does not pad the last block
                     current_block_size
                 }
-                IntegrityStorageType::RomFs => {
+                IntegrityStorageType::Ivfc => {
                     // pad the unused part of the buffer (handling the last block, which may be smaller than the block size)
                     block_buf[current_block_size as usize..].fill(0);
                     block_size
