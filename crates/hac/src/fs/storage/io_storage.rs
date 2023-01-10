@@ -25,7 +25,7 @@ impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
         })
     }
 
-    fn check_size<'a>(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
+    fn check_size(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         let end = offset + buf.len() as u64;
         if end > self.size {
             Err(StorageError::OutOfBounds {})

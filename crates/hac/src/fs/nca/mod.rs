@@ -4,7 +4,7 @@ mod verification_storage;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
-use crate::fs::nca::structs::{NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
+use crate::fs::nca::structs::{IntegrityInfo, NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
 use crate::fs::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
 };
@@ -13,6 +13,7 @@ use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
 
 pub use crypt_storage::NcaCryptStorage;
+pub use verification_storage::{IntegrityCheckLevel, NcaVerificationStorage};
 
 #[derive(Snafu, Debug)]
 pub enum NcaError {
@@ -268,6 +269,35 @@ impl<S: ReadableStorage> Nca<S> {
                             todo!("AES-CTR-EX encryption")
                         }
                     }
+                }
+            })
+    }
+
+    pub fn get_section_storage(
+        &self,
+        index: usize,
+        integrity_level: IntegrityCheckLevel,
+    ) -> Option<NcaVerificationStorage<RawDecryptedSectionStorage<S>>> {
+        self.get_raw_decrypted_section_storage(index)
+            .map(|storage| {
+                let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
+
+                match fs_header.integrity_info {
+                    IntegrityInfo::None => todo!("IntegrityInfo::None is not supported yet"),
+                    IntegrityInfo::Sha256(s) => {
+                        assert_eq!(s.level_count, 2);
+                        let levels = s.level_info[..2].try_into().unwrap();
+
+                        NcaVerificationStorage::new_pfs_verification_storage(
+                            storage,
+                            s.master_hash.0 .0,
+                            levels,
+                            s.block_size,
+                            integrity_level,
+                        )
+                        .expect("PSF header specifies invalid hash level offsets")
+                    }
+                    IntegrityInfo::Ivfc(_) => todo!("IntegrityInfo::Ivfc is not supported yet"),
                 }
             })
     }

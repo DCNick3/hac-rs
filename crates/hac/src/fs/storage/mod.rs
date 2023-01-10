@@ -3,6 +3,7 @@ use snafu::Snafu;
 use std::path::Path;
 
 mod block_adapter_storage;
+mod block_slice_storage;
 mod block_transform_storage;
 mod either_storage;
 mod io_storage;
@@ -11,8 +12,8 @@ mod shared_storage;
 mod slice_storage;
 mod vec_storage;
 
-use crate::fs::storage::slice_storage::SliceStorageError;
 pub use block_adapter_storage::BlockAdapterStorage;
+pub use block_slice_storage::{BlockSliceStorage, BlockSliceStorageError};
 pub use block_transform_storage::{
     block_transforms, AesCtrStorage, BlockTransform, BlockTransformStorage,
 };
@@ -20,7 +21,7 @@ pub use either_storage::EitherStorage;
 pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
 pub use linear_adapter_storage::LinearAdapterStorage;
 pub use shared_storage::SharedStorage;
-pub use slice_storage::SliceStorage;
+pub use slice_storage::{SliceStorage, SliceStorageError};
 pub use vec_storage::VecStorage;
 
 pub trait ReadableStorage: Send + Sync {
@@ -82,6 +83,13 @@ pub trait ReadableStorageExt: ReadableStorage {
         SliceStorage::new(self, offset, size)
     }
 
+    fn shared(self) -> SharedStorage<Self>
+    where
+        Self: Sized,
+    {
+        SharedStorage::new(self)
+    }
+
     fn copy_to<S: Storage>(&self, other: &S) -> Result<(), StorageError> {
         const BUFFER_SIZE: usize = 0x10000;
         let size = self.get_size();
@@ -101,8 +109,30 @@ pub trait ReadableStorageExt: ReadableStorage {
 }
 
 pub trait ReadableBlockStorageExt: ReadableBlockStorage {
+    fn slice(
+        self,
+        block_offset: u64,
+        size: u64,
+    ) -> Result<BlockSliceStorage<Self>, BlockSliceStorageError>
+    where
+        Self: Sized,
+    {
+        BlockSliceStorage::new(self, block_offset, size)
+    }
+
     fn block_count(&self) -> u64 {
         Integer::div_ceil(&self.get_size(), &self.block_size())
+    }
+
+    fn nth_block_size(&self, block_index: u64) -> u64 {
+        assert!(block_index < self.block_count());
+        if block_index == self.block_count() - 1 {
+            // the last block may be smaller than the block size
+            // compute its size
+            ((self.get_size() - 1) % self.block_size()) + 1
+        } else {
+            self.block_size()
+        }
     }
 }
 

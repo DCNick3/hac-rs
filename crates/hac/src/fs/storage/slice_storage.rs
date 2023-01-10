@@ -1,6 +1,7 @@
-use crate::fs::storage::{ReadableStorage, Storage, StorageError};
+use crate::fs::storage::{ReadableBlockStorage, ReadableStorage, Storage, StorageError};
 use snafu::Snafu;
 
+#[derive(Debug)]
 pub struct SliceStorage<S> {
     storage: S,
     offset: u64,
@@ -48,7 +49,7 @@ impl<S: ReadableStorage> ReadableStorage for SliceStorage<S> {
     }
 }
 
-impl<S: ReadableStorage + Storage> Storage for SliceStorage<S> {
+impl<S: Storage> Storage for SliceStorage<S> {
     fn write(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
         if offset + buf.len() as u64 > self.size {
             return Err(StorageError::OutOfBounds {});

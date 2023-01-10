@@ -1,5 +1,6 @@
 use crate::fs::storage::{
-    BlockStorage, ReadableBlockStorage, ReadableStorage, Storage, StorageError,
+    BlockStorage, ReadableBlockStorage, ReadableBlockStorageExt, ReadableStorage, Storage,
+    StorageError,
 };
 
 #[derive(Debug)]
@@ -25,7 +26,7 @@ impl<S: ReadableStorage> ReadableBlockStorage for BlockAdapterStorage<S> {
     fn read_block(&self, block_index: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         assert_eq!(
             buf.len() as u64,
-            self.block_size,
+            self.nth_block_size(block_index),
             "Only full blocks can be read"
         );
         let offset = block_index * self.block_size;
@@ -37,6 +38,8 @@ impl<S: ReadableStorage> ReadableBlockStorage for BlockAdapterStorage<S> {
     }
 
     fn read_block_bulk(&self, block_index: u64, buf: &mut [u8]) -> Result<(), StorageError> {
+        // TODO: actually this assertion is too strict
+        // we can read less than a block if the end of the storage is reached
         assert_eq!(
             buf.len() as u64 % self.block_size,
             0,
@@ -51,7 +54,7 @@ impl<S: Storage> BlockStorage for BlockAdapterStorage<S> {
     fn write_block(&self, block_index: u64, buf: &[u8]) -> Result<(), StorageError> {
         assert_eq!(
             buf.len() as u64,
-            self.block_size,
+            self.nth_block_size(block_index),
             "Only full blocks can be written"
         );
         let offset = block_index * self.block_size;
@@ -67,6 +70,8 @@ impl<S: Storage> BlockStorage for BlockAdapterStorage<S> {
     }
 
     fn write_block_bulk(&self, block_index: u64, buf: &[u8]) -> Result<(), StorageError> {
+        // TODO: actually this assertion is too strict
+        // we can write less than a block if the end of the storage is reached
         assert_eq!(
             buf.len() as u64 % self.block_size,
             0,

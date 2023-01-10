@@ -1,5 +1,5 @@
 use hac::crypto::keyset::KeySet;
-use hac::fs::nca::Nca;
+use hac::fs::nca::{IntegrityCheckLevel, Nca};
 use hac::fs::storage::ReadableStorageExt;
 
 fn main() {
@@ -12,7 +12,9 @@ fn main() {
 
     println!("{:#?}", nca);
 
-    let storage = nca.get_raw_decrypted_section_storage(0).unwrap();
+    let storage = nca
+        .get_section_storage(0, IntegrityCheckLevel::Full)
+        .unwrap();
     // measure time it took us to write the file
     let start = std::time::Instant::now();
     storage
@@ -22,7 +24,9 @@ fn main() {
 
     println!("Written the section 0 in {:?}", duration);
 
-    let storage = nca.get_raw_decrypted_section_storage(1).unwrap();
+    let storage = nca
+        .get_section_storage(1, IntegrityCheckLevel::Full)
+        .unwrap();
     // measure time it took us to write the file
     let start = std::time::Instant::now();
     storage
@@ -32,7 +36,9 @@ fn main() {
 
     println!("Written the section 1 in {:?}", duration);
 
-    let storage = nca.get_raw_decrypted_section_storage(2).unwrap();
+    let storage = nca
+        .get_section_storage(2, IntegrityCheckLevel::Full)
+        .unwrap();
     // measure time it took us to write the file
     let start = std::time::Instant::now();
     storage
