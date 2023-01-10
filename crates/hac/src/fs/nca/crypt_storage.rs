@@ -1,9 +1,36 @@
-use crate::fs::storage::{AesCtrStorage, ReadableStorage, Storage, StorageError};
+use crate::crypto::AesKey;
+use crate::fs::storage::block_transforms::AesCtrBlockTransform;
+use crate::fs::storage::{
+    AesCtrStorage, BlockAdapterStorage, LinearAdapterStorage, ReadableStorage, Storage,
+    StorageError,
+};
+use crate::hexstring::HexData;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum NcaCryptStorage<S: ReadableStorage> {
     Plaintext(S),
-    AesCtr(AesCtrStorage<S>),
+    AesCtr(LinearAdapterStorage<AesCtrStorage<BlockAdapterStorage<S>>>),
+}
+
+impl<S: ReadableStorage> NcaCryptStorage<S> {
+    pub fn new_plaintext(storage: S) -> Self {
+        Self::Plaintext(storage)
+    }
+
+    pub fn new_ctr(storage: S, key: AesKey, upper_counter: u64, start_offset: u64) -> Self {
+        // base nonce: first 8 bytes are specified in the fs header, the rest is big-endian offset in the section counter in AES blocks
+        // the section decryptor itself will add the inner offset
+        let mut nonce = [0; 0x10];
+        nonce[..8].copy_from_slice(&upper_counter.to_be_bytes());
+        nonce[8..].copy_from_slice(&(start_offset / 16).to_be_bytes());
+
+        let block_adapter = BlockAdapterStorage::new(storage, 0x10);
+        let transform = AesCtrBlockTransform::new(key, HexData(nonce));
+        let aes_ctr = AesCtrStorage::new(block_adapter, transform);
+        let linear_adapter = LinearAdapterStorage::new(aes_ctr);
+
+        Self::AesCtr(linear_adapter)
+    }
 }
 
 impl<S: ReadableStorage> ReadableStorage for NcaCryptStorage<S> {

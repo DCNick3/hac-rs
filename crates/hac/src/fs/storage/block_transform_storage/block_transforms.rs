@@ -25,16 +25,16 @@ impl AesCtrBlockTransform {
 }
 
 impl BlockTransform for AesCtrBlockTransform {
-    const BLOCK_SIZE: usize = 0x10;
+    const BLOCK_SIZE: u64 = 0x10;
 
     fn transform_read(&self, block: &mut [u8], block_index: u64) {
-        debug_assert_eq!(block.len() % Self::BLOCK_SIZE, 0);
+        debug_assert_eq!(block.len() as u64 % Self::BLOCK_SIZE, 0);
 
         self.key.decrypt_ctr(block, &self.get_ctr(block_index));
     }
 
     fn transform_write(&self, block: &mut [u8], block_index: u64) {
-        debug_assert_eq!(block.len() % Self::BLOCK_SIZE, 0);
+        debug_assert_eq!(block.len() as u64 % Self::BLOCK_SIZE, 0);
 
         self.key.encrypt_ctr(block, &self.get_ctr(block_index));
     }

@@ -2,19 +2,23 @@ use num::Integer;
 use snafu::Snafu;
 use std::path::Path;
 
+mod block_adapter_storage;
 mod block_transform_storage;
 mod either_storage;
 mod io_storage;
+mod linear_adapter_storage;
 mod shared_storage;
 mod slice_storage;
 mod vec_storage;
 
 use crate::fs::storage::slice_storage::SliceStorageError;
+pub use block_adapter_storage::BlockAdapterStorage;
 pub use block_transform_storage::{
     block_transforms, AesCtrStorage, BlockTransform, BlockTransformStorage,
 };
 pub use either_storage::EitherStorage;
 pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
+pub use linear_adapter_storage::LinearAdapterStorage;
 pub use shared_storage::SharedStorage;
 pub use slice_storage::SliceStorage;
 pub use vec_storage::VecStorage;

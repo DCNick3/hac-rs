@@ -5,11 +5,9 @@ mod verification_storage;
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
 use crate::fs::nca::structs::{NcaEncryptionType, NcaFsHeader, NcaHeader, NcaMagic};
-use crate::fs::storage::block_transforms::AesCtrBlockTransform;
 use crate::fs::storage::{
-    AesCtrStorage, ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
+    ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
 };
-use crate::hexstring::HexData;
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
@@ -256,19 +254,15 @@ impl<S: ReadableStorage> Nca<S> {
                         }
                         NcaEncryptionType::AesCtr => {
                             let key = self.get_ctr_key();
-
-                            // base nonce: first 8 bytes are specified in the fs header, the rest is big-endian offset in the section counter in AES blocks
-                            // the section decryptor itself will add the inner offset
-                            let mut nonce = [0; 0x10];
-                            nonce[..8].copy_from_slice(&fs_header.upper_counter.to_be_bytes());
-                            let start_offset: u64 =
+                            let start_offset =
                                 self.headers.nca_header.section_table[index].start.into();
-                            nonce[8..].copy_from_slice(&(start_offset / 16).to_be_bytes());
 
-                            NcaCryptStorage::AesCtr(AesCtrStorage::new(
+                            NcaCryptStorage::new_ctr(
                                 storage,
-                                AesCtrBlockTransform::new(key, HexData(nonce)),
-                            ))
+                                key,
+                                fs_header.upper_counter,
+                                start_offset,
+                            )
                         }
                         NcaEncryptionType::AesCtrEx => {
                             todo!("AES-CTR-EX encryption")
