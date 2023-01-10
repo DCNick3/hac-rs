@@ -60,6 +60,21 @@ impl<S: ReadableBlockStorage, T: BlockTransform> ReadableBlockStorage
     fn get_size(&self) -> u64 {
         self.storage.get_size()
     }
+
+    fn read_block_bulk(&self, block_index: u64, buf: &mut [u8]) -> Result<(), StorageError> {
+        assert_eq!(
+            buf.len() as u64 % T::BLOCK_SIZE,
+            0,
+            "Only full blocks can be read"
+        );
+
+        self.storage.read_block_bulk(block_index, buf)?;
+
+        // transform_read allows to transform multiple blocks at once
+        self.transform.transform_read(buf, block_index);
+
+        Ok(())
+    }
 }
 
 impl<S: BlockStorage, T: BlockTransform> BlockStorage for BlockTransformStorage<S, T> {
