@@ -74,7 +74,8 @@ fn test_nca() {
     println!("Written the section 2 in {:?}", duration);
 }
 
-fn main() {
+#[allow(unused)]
+fn test_tik() {
     use hac::binrw::BinRead;
 
     let file =
@@ -84,4 +85,17 @@ fn main() {
     let ticket = Ticket::read(&mut cursor).unwrap();
 
     println!("{:#?}", ticket);
+}
+
+fn main() {
+    use hac::binrw::BinRead;
+
+    let file = std::fs::read(
+        "test_files/e7b074f7535f34c434a1512f776cd0ac.cmnt.0dir/Application_010079300ad54000.cnmt",
+    )
+    .unwrap();
+    let mut cursor = std::io::Cursor::new(file);
+    let cnmt = hac::fs::cnmt::Cnmt::read(&mut cursor).unwrap();
+
+    println!("{:#?}", cnmt);
 }

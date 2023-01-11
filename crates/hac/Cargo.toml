@@ -11,8 +11,8 @@ rust-ini = "0.18.0"
 snafu = { version = "0.7.4", features = [] }
 serde = { version = "1.0.152", features = ["derive"] }
 dirs-next = "2.0.0"
-binrw = "0.10.0"
-#binrw = { git = "https://github.com/jam1garner/binrw", rev = "b6f51d71eb4d80b7c4073e74922638812ab9e9d5" }
+#binrw = "0.10.0"
+binrw = { git = "https://github.com/jam1garner/binrw", rev = "b6f51d71eb4d80b7c4073e74922638812ab9e9d5" }
 num = "0.4.0"
 bitflags = "1.3.2"
 

@@ -1,3 +1,4 @@
+pub mod cnmt;
 pub mod filesystem;
 pub mod nca;
 pub mod pfs;

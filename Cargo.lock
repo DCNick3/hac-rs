@@ -39,8 +39,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "binrw"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f846d8732b2a55b569b885852ecc925a2b1f24568f4707f8b1ccd5dc6805ea9b"
+source = "git+https://github.com/jam1garner/binrw?rev=b6f51d71eb4d80b7c4073e74922638812ab9e9d5#b6f51d71eb4d80b7c4073e74922638812ab9e9d5"
 dependencies = [
  "array-init",
  "binrw_derive",
@@ -50,8 +49,7 @@ dependencies = [
 [[package]]
 name = "binrw_derive"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c2aa66a5e35daf7f91ed44c945886597ef4c327f34f68b6bbf22951a250ceeb"
+source = "git+https://github.com/jam1garner/binrw?rev=b6f51d71eb4d80b7c4073e74922638812ab9e9d5#b6f51d71eb4d80b7c4073e74922638812ab9e9d5"
 dependencies = [
  "either",
  "owo-colors",

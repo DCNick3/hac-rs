@@ -1,5 +1,6 @@
 use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey, RightsId};
 use crate::hexstring::HexData;
+use crate::types::TitleId;
 use binrw::{BinRead, BinWrite};
 use std::fmt::Debug;
 
@@ -68,16 +69,6 @@ pub enum NcaMagic {
     Nca2,
     #[brw(magic = b"NCA3")]
     Nca3,
-}
-
-#[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
-pub struct TitleId(u64);
-
-impl Debug for TitleId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:016x}", self.0)
-    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
