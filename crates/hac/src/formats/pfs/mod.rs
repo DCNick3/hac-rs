@@ -128,6 +128,8 @@ impl<S: ReadableStorage> PartitionFileSystem<S> {
 impl<S: ReadableStorage> ReadableFileSystem for PartitionFileSystem<S> {
     type File<'a> = File<'a, S> where Self: 'a;
     type Directory<'a> = Directory<'a, S> where Self: 'a;
+    type Storage = FileStorage<S>;
+    type OpenError = PfsOpenError;
 
     fn root(&self) -> Self::Directory<'_> {
         Directory { fs: self }

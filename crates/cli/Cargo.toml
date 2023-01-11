@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 hac = { path = "../hac" }
 clap = "4.0.32"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

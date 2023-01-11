@@ -1,3 +1,4 @@
+use crate::crypto::keyset::KeyAreaKeyIndex;
 use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey, RightsId};
 use crate::hexstring::HexData;
 use crate::types::TitleId;
@@ -141,7 +142,7 @@ pub struct NcaHeader {
     pub distribution_type: DistributionType,
     pub content_type: NcaContentType,
     pub key_generation_1: u8,
-    pub key_area_key_index: u8,
+    pub key_area_key_index: KeyAreaKeyIndex,
     pub nca_size: u64,
     pub title_id: TitleId,
     pub content_index: u32,

@@ -6,5 +6,6 @@ pub mod filesystem;
 pub mod formats;
 mod hexstring;
 pub mod storage;
+pub mod switch_fs;
 pub mod ticket;
 pub mod types;

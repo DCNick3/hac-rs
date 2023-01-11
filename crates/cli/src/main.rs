@@ -1,7 +1,11 @@
 use hac::crypto::keyset::KeySet;
-use hac::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
+use hac::filesystem::{
+    Entry, ReadableDirectory, ReadableDirectoryExt, ReadableFile, ReadableFileSystem,
+};
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
+use hac::formats::pfs::PartitionFileSystem;
 use hac::storage::ReadableStorageExt;
+use hac::switch_fs::SwitchFs;
 use hac::ticket::Ticket;
 use std::path::{Path, PathBuf};
 
@@ -101,7 +105,8 @@ fn test_cnmt() {
     println!("{:#?}", cnmt);
 }
 
-fn main() {
+#[allow(unused)]
+fn test_nacp() {
     use hac::binrw::BinRead;
 
     let file =
@@ -110,4 +115,25 @@ fn main() {
     let nacp = hac::formats::nacp::Nacp::read(&mut cursor).unwrap();
 
     println!("{:#?}", nacp);
+}
+
+fn main() {
+    tracing_subscriber::fmt::init();
+
+    let file = "test_files/fmf_010079300AD54000.nsp";
+    let keyset = KeySet::from_system(None).unwrap();
+
+    let nsp_storage = hac::storage::FileRoStorage::open(file).unwrap();
+
+    let nsp = PartitionFileSystem::new(nsp_storage).unwrap();
+
+    println!(
+        "Files in the NSP:\n{:#?}",
+        nsp.root()
+            .entries_recursive()
+            .flat_map(|(n, e)| e.file().map(|_| n))
+            .collect::<Vec<_>>()
+    );
+
+    let switch_fs = SwitchFs::new(&keyset, &nsp).unwrap();
 }

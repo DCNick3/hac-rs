@@ -16,6 +16,8 @@ binrw = { git = "https://github.com/jam1garner/binrw", rev = "b6f51d71eb4d80b7c4
 num = "0.4.0"
 bitflags = "1.3.2"
 enum-map = "2.4.2"
+derive_more = "0.99.17"
+itertools = "0.10.5"
 
 cipher = "0.4.3"
 aes = "0.8.2"
@@ -24,3 +26,5 @@ xts-mode = "0.5.1"
 
 digest = "0.10.6"
 sha2 = "0.10.6"
+
+tracing = "0.1.37"

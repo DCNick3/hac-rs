@@ -107,6 +107,12 @@ pub trait ReadableStorageExt: ReadableStorage {
         BufReader::new(self.io())
     }
 
+    fn read_all(&self) -> Result<Vec<u8>, StorageError> {
+        let mut buf = vec![0; self.get_size() as usize];
+        self.read(0, &mut buf)?;
+        Ok(buf)
+    }
+
     fn copy_to<S: Storage>(&self, other: &S) -> Result<(), StorageError> {
         const BUFFER_SIZE: usize = 0x10000;
         let size = self.get_size();

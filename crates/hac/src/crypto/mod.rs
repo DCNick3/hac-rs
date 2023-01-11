@@ -117,7 +117,7 @@ impl RightsId {
 }
 
 impl AesKey {
-    pub fn derive_key(&self, source: &[u8; 0x10]) -> AesKey {
+    fn derive_key(&self, source: &[u8; 0x10]) -> AesKey {
         use cipher::{BlockDecrypt, KeyInit};
         let mut newkey = *source;
 
@@ -127,7 +127,11 @@ impl AesKey {
         AesKey(HexData(newkey))
     }
 
-    pub fn derive_xts_key(&self, source: &[u8; 0x20]) -> AesXtsKey {
+    pub fn decrypt_key(&self, source: EncryptedAesKey) -> AesKey {
+        self.derive_key(&source.0 .0)
+    }
+
+    fn derive_xts_key(&self, source: &[u8; 0x20]) -> AesXtsKey {
         use cipher::{BlockDecrypt, KeyInit};
         let mut newkey = *source;
 
@@ -137,6 +141,11 @@ impl AesKey {
 
         AesXtsKey(HexData(newkey))
     }
+
+    pub fn decrypt_xts_key(&self, source: EncryptedAesXtsKey) -> AesXtsKey {
+        self.derive_xts_key(&source.0 .0)
+    }
+
     /// Decrypt blocks in CTR mode.
     pub fn decrypt_ctr(&self, buf: &mut [u8], ctr: &[u8; 0x10]) {
         use cipher::{KeyIvInit, StreamCipher};

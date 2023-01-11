@@ -1,5 +1,6 @@
 use crate::storage::ReadableStorage;
-use std::fmt::Debug;
+use snafu::AsErrorSource;
+use std::fmt::{Debug, Display};
 
 #[derive(Debug)]
 pub enum Entry<F: ReadableFile, D: ReadableDirectory> {
@@ -7,9 +8,25 @@ pub enum Entry<F: ReadableFile, D: ReadableDirectory> {
     Directory(D),
 }
 
+impl<F: ReadableFile, D: ReadableDirectory> Entry<F, D> {
+    pub fn file(self) -> Option<F> {
+        match self {
+            Entry::File(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn directory(self) -> Option<D> {
+        match self {
+            Entry::Directory(d) => Some(d),
+            _ => None,
+        }
+    }
+}
+
 pub trait ReadableFile: Sized {
     type Storage: ReadableStorage;
-    type Error: Debug;
+    type Error: Debug + Display;
 
     fn name(&self) -> &str;
     fn size(&self) -> u64;
@@ -25,14 +42,60 @@ pub trait ReadableDirectory: Sized {
 }
 
 pub trait ReadableFileSystem: Sized {
-    type File<'a>: ReadableFile + 'a
+    type File<'a>: ReadableFile<Storage = Self::Storage, Error = Self::OpenError> + 'a
     where
         Self: 'a;
     type Directory<'a>: ReadableDirectory<File = Self::File<'a>>
     where
         Self: 'a;
+    type Storage: ReadableStorage;
+    type OpenError: Debug + Display + AsErrorSource;
 
     fn root(&self) -> Self::Directory<'_>;
     fn open_directory(&self, path: &str) -> Option<Self::Directory<'_>>;
     fn open_file(&self, path: &str) -> Option<Self::File<'_>>;
 }
+
+pub struct RecursiveDirectoryIter<D: ReadableDirectory> {
+    inner: Vec<D::Iter>,
+    path: String,
+}
+
+impl<D: ReadableDirectory> Iterator for RecursiveDirectoryIter<D> {
+    type Item = (String, Entry<D::File, D>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(mut it) = self.inner.last_mut() {
+                match it.next() {
+                    None => {
+                        self.inner.pop().unwrap();
+                    }
+                    Some(Entry::File(f)) => {
+                        break Some((format!("{}/{}", self.path, f.name()), Entry::File(f)))
+                    }
+                    Some(Entry::Directory(d)) => {
+                        self.inner.push(d.entries());
+                        self.path.push('/');
+                        self.path.push_str(d.name());
+                        break Some((self.path.clone(), Entry::Directory(d)));
+                    }
+                    _ => unreachable!(),
+                }
+            } else {
+                break None;
+            }
+        }
+    }
+}
+
+pub trait ReadableDirectoryExt: ReadableDirectory {
+    fn entries_recursive(&self) -> RecursiveDirectoryIter<Self> {
+        RecursiveDirectoryIter {
+            inner: vec![self.entries()],
+            path: "".to_string(),
+        }
+    }
+}
+
+impl<T: ReadableDirectory> ReadableDirectoryExt for T {}

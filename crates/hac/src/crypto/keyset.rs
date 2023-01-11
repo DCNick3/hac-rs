@@ -1,5 +1,6 @@
 use crate::crypto::{AesKey, AesXtsKey, KeyParseError, RightsId, TitleKey};
 use crate::ticket::Ticket;
+use binrw::{BinRead, BinWrite};
 use ini::Properties;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
@@ -7,10 +8,14 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+#[derive(Clone)]
 pub struct KeySet {
     // I don't want to deal with all key derivation machinery right now, so I'll just add the keys I need for now.
     header_key: Option<AesXtsKey>,
     title_kek: [Option<AesKey>; 0x10],
+    key_area_key_application: [Option<AesKey>; 0x20],
+    key_area_key_ocean: [Option<AesKey>; 0x20],
+    key_area_key_system: [Option<AesKey>; 0x20],
     title_keys: HashMap<RightsId, TitleKey>,
 }
 
@@ -87,6 +92,14 @@ pub enum SystemKeysetError {
 #[derive(Snafu, Debug)]
 pub struct MissingTitleKeyError {
     pub rights_id: RightsId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite)]
+#[brw(repr = u8)]
+pub enum KeyAreaKeyIndex {
+    Application = 0,
+    Ocean = 1,
+    System = 2,
 }
 
 impl KeySet {
@@ -210,10 +223,15 @@ impl KeySet {
         Ok(Self {
             header_key: parse_key(common_keys, "header_key")?,
             title_kek: parse_keys(common_keys, "titlekek")?,
+            key_area_key_application: parse_keys(common_keys, "key_area_key_application")?,
+            key_area_key_ocean: parse_keys(common_keys, "key_area_key_ocean")?,
+            key_area_key_system: parse_keys(common_keys, "key_area_key_system")?,
             title_keys,
         })
     }
+}
 
+impl KeySet {
     pub fn header_key(&self) -> Result<AesXtsKey, MissingKeyError> {
         self.header_key.ok_or(MissingKeyError {
             key_name: KeyName {
@@ -228,11 +246,31 @@ impl KeySet {
             .insert(ticket.rights_id, ticket.title_key(self));
     }
 
-    pub fn title_kek(&self, index: u8) -> Result<AesKey, MissingKeyError> {
-        self.title_kek[index as usize].ok_or(MissingKeyError {
+    pub fn title_kek(&self, master_key_revision: u8) -> Result<AesKey, MissingKeyError> {
+        self.title_kek[master_key_revision as usize].ok_or(MissingKeyError {
             key_name: KeyName {
                 key_name: "title_kek",
-                index: Some(index),
+                index: Some(master_key_revision),
+            },
+        })
+    }
+
+    pub fn key_area_key(
+        &self,
+        master_key_revision: u8,
+        key_area_key_index: KeyAreaKeyIndex,
+    ) -> Result<AesKey, MissingKeyError> {
+        let (kek_array, name) = match key_area_key_index {
+            KeyAreaKeyIndex::Application => {
+                (&self.key_area_key_application, "key_area_key_application")
+            }
+            KeyAreaKeyIndex::Ocean => (&self.key_area_key_ocean, "key_area_key_ocean"),
+            KeyAreaKeyIndex::System => (&self.key_area_key_system, "key_area_key_system"),
+        };
+        kek_array[master_key_revision as usize].ok_or(MissingKeyError {
+            key_name: KeyName {
+                key_name: name,
+                index: Some(master_key_revision),
             },
         })
     }

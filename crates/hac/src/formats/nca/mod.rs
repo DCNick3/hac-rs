@@ -3,21 +3,22 @@ mod filesystem;
 mod structs;
 mod verification_storage;
 
-use crate::crypto::keyset::KeySet;
-use crate::crypto::{AesKey, AesXtsKey};
-use crate::formats::nca::structs::{
-    IntegrityInfo, NcaContentType, NcaEncryptionType, NcaFormatType, NcaFsHeader, NcaHeader,
-    NcaMagic, NcaSectionType,
-};
-use crate::storage::{
-    ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
-};
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
 
+use crate::crypto::keyset::KeySet;
+use crate::crypto::{AesKey, AesXtsKey};
 use crate::formats::nca::filesystem::NcaFileSystem;
+use crate::formats::nca::structs::{
+    IntegrityInfo, NcaEncryptionType, NcaFormatType, NcaFsHeader, NcaHeader, NcaMagic,
+};
+use crate::storage::{
+    ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
+};
+
 pub use crypt_storage::NcaCryptStorage;
+pub use structs::{NcaContentType, NcaSectionType};
 pub use verification_storage::{IntegrityCheckLevel, NcaVerificationStorage};
 
 #[derive(Snafu, Debug)]
@@ -91,6 +92,8 @@ const HEADER_SECTOR_SIZE: usize = 0x200;
 
 type RawEncryptedSectionStorage<S> = SliceStorage<SharedStorage<S>>;
 type RawDecryptedSectionStorage<S> = NcaCryptStorage<RawEncryptedSectionStorage<S>>;
+type VerifiedSectionStorage<S> = NcaVerificationStorage<RawDecryptedSectionStorage<S>>;
+type SectionFileSystem<S> = NcaFileSystem<VerifiedSectionStorage<S>>;
 
 impl<S: ReadableStorage> Nca<S> {
     pub fn new(key_set: &KeySet, storage: S) -> Result<Self, NcaError> {
@@ -116,8 +119,17 @@ impl<S: ReadableStorage> Nca<S> {
 
             NcaContentKeys::RightsId(title_key.decrypt(title_kek))
         } else {
-            // TODO: decrypt the content key from key area
-            todo!()
+            let kak = key_set
+                .key_area_key(
+                    headers.master_key_revision(),
+                    headers.nca_header.key_area_key_index,
+                )
+                .context(MissingKeySnafu)?;
+
+            let ctr = kak.decrypt_key(headers.nca_header.key_area.encrypted_ctr_key);
+            let xts = kak.decrypt_xts_key(headers.nca_header.key_area.encrypted_xts_key);
+
+            NcaContentKeys::KeyArea { ctr, xts }
         };
 
         let expected_session_count = if headers.nca_header.content_type == NcaContentType::Program {
@@ -221,7 +233,14 @@ impl<S: ReadableStorage> Nca<S> {
             is_decrypted,
         ))
     }
+}
+impl<S: ReadableStorage> Nca<S> {
+    pub fn content_type(&self) -> NcaContentType {
+        self.headers.nca_header.content_type
+    }
+}
 
+impl<S: ReadableStorage> Nca<S> {
     pub fn get_raw_encrypted_section_storage(
         &self,
         index: usize,
@@ -293,7 +312,7 @@ impl<S: ReadableStorage> Nca<S> {
         &self,
         index: usize,
         integrity_level: IntegrityCheckLevel,
-    ) -> Option<NcaVerificationStorage<RawDecryptedSectionStorage<S>>> {
+    ) -> Option<VerifiedSectionStorage<S>> {
         self.get_raw_decrypted_section_storage(index)
             .map(|storage| {
                 let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
@@ -315,7 +334,7 @@ impl<S: ReadableStorage> Nca<S> {
                             s.block_size,
                             integrity_level,
                         )
-                        .expect("FS header specifies invalid hash level offsets for HierarchicalSha256 integrity verification")
+                            .expect("FS header specifies invalid hash level offsets for HierarchicalSha256 integrity verification")
                     }
                     IntegrityInfo::Ivfc(s) => {
                         assert_eq!(s.master_hash_size, 0x20);
@@ -333,7 +352,7 @@ impl<S: ReadableStorage> Nca<S> {
         &self,
         index: usize,
         integrity_level: IntegrityCheckLevel,
-    ) -> Option<NcaFileSystem<NcaVerificationStorage<RawDecryptedSectionStorage<S>>>> {
+    ) -> Option<SectionFileSystem<S>> {
         self.get_section_storage(index, integrity_level)
             .map(|storage| {
                 let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
@@ -360,5 +379,15 @@ impl<S: ReadableStorage> Nca<S> {
             (0, _) => Some(Data),
             _ => None,
         }
+    }
+
+    pub fn get_fs(
+        &self,
+        ty: NcaSectionType,
+        integrity_level: IntegrityCheckLevel,
+    ) -> Option<SectionFileSystem<S>> {
+        let index = (0..4).find(|&i| self.get_section_type(i) == Some(ty))?;
+
+        self.get_section_fs(index, integrity_level)
     }
 }
