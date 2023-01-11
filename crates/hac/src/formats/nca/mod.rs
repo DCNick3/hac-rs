@@ -5,18 +5,18 @@ mod verification_storage;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
-use crate::fs::nca::structs::{
+use crate::formats::nca::structs::{
     IntegrityInfo, NcaContentType, NcaEncryptionType, NcaFormatType, NcaFsHeader, NcaHeader,
     NcaMagic, NcaSectionType,
 };
-use crate::fs::storage::{
+use crate::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
 };
 use binrw::BinRead;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
 
-use crate::fs::nca::filesystem::NcaFileSystem;
+use crate::formats::nca::filesystem::NcaFileSystem;
 pub use crypt_storage::NcaCryptStorage;
 pub use verification_storage::{IntegrityCheckLevel, NcaVerificationStorage};
 
@@ -72,6 +72,7 @@ enum NcaContentKeys {
     /// NCA is decrypted, no keys are needed.
     Plaintext,
     /// Keys that were decrypted from the key area for Normal crypto
+    #[allow(dead_code)] // TODO: implement key area decryption, then this will be used
     KeyArea { ctr: AesKey, xts: AesXtsKey },
     /// Decrypted key for the RightsId crypto obtained externally
     RightsId(AesKey),
@@ -296,6 +297,10 @@ impl<S: ReadableStorage> Nca<S> {
         self.get_raw_decrypted_section_storage(index)
             .map(|storage| {
                 let fs_header = self.headers.fs_headers[index].as_ref().unwrap();
+
+                if fs_header.exists_compression_layer() {
+                    todo!("Compression layer is not supported yet");
+                }
 
                 match fs_header.integrity_info {
                     IntegrityInfo::None => todo!("IntegrityInfo::None is not supported yet"),

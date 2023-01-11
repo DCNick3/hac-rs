@@ -1,5 +1,5 @@
-use crate::fs::romfs::structs::{RomFsEntry, RomId};
-use crate::fs::storage::{ReadableStorage, ReadableStorageExt};
+use crate::formats::romfs::structs::{RomFsEntry, RomId};
+use crate::storage::{ReadableStorage, ReadableStorageExt};
 use binrw::{BinRead, BinWrite};
 use std::marker::PhantomData;
 

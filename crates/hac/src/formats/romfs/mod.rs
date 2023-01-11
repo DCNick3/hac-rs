@@ -1,10 +1,10 @@
-use crate::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
-use crate::fs::romfs::dictionary::RomFsDictionary;
-use crate::fs::romfs::structs::{
+use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
+use crate::formats::romfs::dictionary::RomFsDictionary;
+use crate::formats::romfs::structs::{
     DirectoryRomEntry, FileRomEntry, FindPosition, RomFileInfo, RomFsHeader,
 };
-use crate::fs::romfs::tables::HierarchicalRomTables;
-use crate::fs::storage::{
+use crate::formats::romfs::tables::HierarchicalRomTables;
+use crate::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, SliceStorageError,
 };
 use binrw::BinRead;

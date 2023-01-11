@@ -1,8 +1,8 @@
 mod structs;
 
-use crate::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
-use crate::fs::pfs::structs::{get_string, PartitionFsHeader};
-use crate::fs::storage::{
+use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
+use crate::formats::pfs::structs::{get_string, PartitionFsHeader};
+use crate::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, SliceStorageError,
 };
 use binrw::BinRead;

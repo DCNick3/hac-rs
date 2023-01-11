@@ -1,4 +1,4 @@
-use crate::fs::storage::{ReadableStorage, Storage, StorageError};
+use crate::storage::{ReadableStorage, Storage, StorageError};
 use std::io::{ErrorKind, Read};
 
 pub struct StorageIo<S: ReadableStorage> {

@@ -1,7 +1,7 @@
 pub mod block_transforms;
 
-use crate::fs::storage::block_transforms::AesCtrBlockTransform;
-use crate::fs::storage::{BlockStorage, ReadableBlockStorage, StorageError};
+use crate::storage::block_transforms::AesCtrBlockTransform;
+use crate::storage::{BlockStorage, ReadableBlockStorage, StorageError};
 
 pub trait BlockTransform: Clone + Send + Sync {
     const BLOCK_SIZE: u64;

@@ -1,10 +1,10 @@
 use crate::crypto::AesKey;
-use crate::fs::storage::block_transforms::AesCtrBlockTransform;
-use crate::fs::storage::{
+use crate::hexstring::HexData;
+use crate::storage::block_transforms::AesCtrBlockTransform;
+use crate::storage::{
     AesCtrStorage, BlockAdapterStorage, LinearAdapterStorage, ReadableStorage, Storage,
     StorageError,
 };
-use crate::hexstring::HexData;
 
 #[derive(Debug)]
 pub enum NcaCryptStorage<S: ReadableStorage> {

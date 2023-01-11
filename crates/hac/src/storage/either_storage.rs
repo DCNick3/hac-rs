@@ -1,4 +1,4 @@
-use crate::fs::storage::{ReadableStorage, Storage, StorageError};
+use crate::storage::{ReadableStorage, Storage, StorageError};
 
 #[derive(Debug, Clone)]
 pub enum EitherStorage<L: ReadableStorage, R: ReadableStorage> {

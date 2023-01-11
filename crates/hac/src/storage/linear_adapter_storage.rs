@@ -1,6 +1,4 @@
-use crate::fs::storage::{
-    BlockStorage, ReadableBlockStorage, ReadableStorage, Storage, StorageError,
-};
+use crate::storage::{BlockStorage, ReadableBlockStorage, ReadableStorage, Storage, StorageError};
 
 #[derive(Debug)]
 pub struct LinearAdapterStorage<S: ReadableBlockStorage> {

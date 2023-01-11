@@ -1,4 +1,4 @@
-use crate::fs::storage::{BlockStorage, ReadableBlockStorage, StorageError};
+use crate::storage::{BlockStorage, ReadableBlockStorage, StorageError};
 use snafu::Snafu;
 
 pub struct BlockSliceStorage<S> {

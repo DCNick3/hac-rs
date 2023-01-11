@@ -1,5 +1,5 @@
-use crate::fs::romfs::dictionary::{RomEntryKey, RomFsDictionary};
-use crate::fs::romfs::structs::{
+use crate::formats::romfs::dictionary::{RomEntryKey, RomFsDictionary};
+use crate::formats::romfs::structs::{
     DirectoryRomEntry, FileRomEntry, FindPosition, RomFileInfo, RomId,
 };
 

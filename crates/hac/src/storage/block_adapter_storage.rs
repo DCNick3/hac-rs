@@ -1,4 +1,4 @@
-use crate::fs::storage::{
+use crate::storage::{
     BlockStorage, ReadableBlockStorage, ReadableBlockStorageExt, ReadableStorage, Storage,
     StorageError,
 };

@@ -1,7 +1,7 @@
-use crate::fs::nca::verification_storage::{
+use crate::formats::nca::verification_storage::{
     IntegrityCheckLevel, IntegrityStorageType, DIGEST_SIZE,
 };
-use crate::fs::storage::{
+use crate::storage::{
     ReadableBlockStorage, ReadableBlockStorageExt, ReadableStorage, StorageError,
 };
 use digest::Digest;

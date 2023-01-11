@@ -1,5 +1,5 @@
-use crate::fs::nca::structs::{IvfcIntegrityInfoLevel, Sha256IntegrityInfoLevel};
-use crate::fs::storage::{
+use crate::formats::nca::structs::{IvfcIntegrityInfoLevel, Sha256IntegrityInfoLevel};
+use crate::storage::{
     BlockAdapterStorage, LinearAdapterStorage, ReadableStorage, ReadableStorageExt, SharedStorage,
     SliceStorage, SliceStorageError, StorageError, VecStorage,
 };

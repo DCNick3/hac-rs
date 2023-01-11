@@ -1,4 +1,4 @@
-use crate::fs::storage::ReadableStorage;
+use crate::storage::{ReadableStorage, StorageError};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ impl<S: ReadableStorage> Clone for SharedStorage<S> {
 }
 
 impl<S: ReadableStorage> ReadableStorage for SharedStorage<S> {
-    fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), crate::fs::storage::StorageError> {
+    fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         self.storage.read(offset, buf)
     }
 

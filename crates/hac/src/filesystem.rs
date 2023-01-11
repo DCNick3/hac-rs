@@ -1,4 +1,4 @@
-use crate::fs::storage::ReadableStorage;
+use crate::storage::ReadableStorage;
 use std::fmt::Debug;
 
 #[derive(Debug)]

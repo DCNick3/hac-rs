@@ -1,8 +1,8 @@
-use crate::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
-use crate::fs::pfs::{PartitionFileSystem, PfsParseError};
-use crate::fs::romfs::{RomFileSystem, RomFsParseError};
-use crate::fs::storage::ReadableStorage;
-use crate::fs::{pfs, romfs};
+use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
+use crate::formats::pfs::{PartitionFileSystem, PfsParseError};
+use crate::formats::romfs::{RomFileSystem, RomFsParseError};
+use crate::formats::{pfs, romfs};
+use crate::storage::ReadableStorage;
 
 type NcaFileStorage<S> = pfs::FileStorage<S>;
 

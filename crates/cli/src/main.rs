@@ -1,7 +1,7 @@
 use hac::crypto::keyset::KeySet;
-use hac::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
-use hac::fs::nca::{IntegrityCheckLevel, Nca};
-use hac::fs::storage::ReadableStorageExt;
+use hac::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
+use hac::formats::nca::{IntegrityCheckLevel, Nca};
+use hac::storage::ReadableStorageExt;
 use hac::ticket::Ticket;
 use std::path::{Path, PathBuf};
 
@@ -44,7 +44,7 @@ fn test_nca() {
     let base_name = "test_files/de16b5aa443dd171bb90b10b88ec3d3b".to_string();
 
     let keyset = KeySet::from_system(None).unwrap();
-    let nca_storage = hac::fs::storage::FileRoStorage::open(base_name.clone() + ".nca").unwrap();
+    let nca_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".nca").unwrap();
 
     let nca = Nca::new(&keyset, nca_storage).unwrap();
 
@@ -96,7 +96,7 @@ fn test_cnmt() {
     )
     .unwrap();
     let mut cursor = std::io::Cursor::new(file);
-    let cnmt = hac::fs::cnmt::Cnmt::read(&mut cursor).unwrap();
+    let cnmt = hac::formats::cnmt::Cnmt::read(&mut cursor).unwrap();
 
     println!("{:#?}", cnmt);
 }
@@ -107,7 +107,7 @@ fn main() {
     let file =
         std::fs::read("test_files/0c93fc88e2a0ea63477c6f854a12b457.0dir/control.nacp").unwrap();
     let mut cursor = std::io::Cursor::new(file);
-    let nacp = hac::fs::nacp::Nacp::read(&mut cursor).unwrap();
-    
+    let nacp = hac::formats::nacp::Nacp::read(&mut cursor).unwrap();
+
     println!("{:#?}", nacp);
 }
