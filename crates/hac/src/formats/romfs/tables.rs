@@ -21,15 +21,15 @@ impl HierarchicalRomTables {
     }
 
     fn find_path_recursive<'a>(&self, path: &'a str) -> Option<RomEntryKey<'a>> {
-        let path = path.split('/');
+        let mut path = path.split('/');
         let mut key = RomEntryKey {
-            name: "",
+            name: path.next().unwrap(),
             parent: RomId(0),
         };
 
         for part in path {
-            key.name = part;
             (_, key.parent) = self.directory_table.get_offset_from_key(key)?;
+            key.name = part;
         }
 
         Some(key)

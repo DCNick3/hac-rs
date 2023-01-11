@@ -1,5 +1,5 @@
 use crate::hexstring::HexData;
-use crate::types::TitleId;
+use crate::types::{NcaId, TitleId};
 use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use std::io::SeekFrom;
@@ -63,7 +63,7 @@ pub enum ContentType {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct CnmtContentEntry {
     pub hash: HexData<0x20>,
-    pub nca_id: HexData<0x10>,
+    pub nca_id: NcaId,
     #[br(parse_with = crate::brw_utils::read_u48)]
     #[bw(write_with = crate::brw_utils::write_u48)]
     pub size: u64,

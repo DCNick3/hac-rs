@@ -1,6 +1,7 @@
 use crate::crypto::keyset::KeySet;
-use crate::filesystem::{Entry, ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
+use crate::filesystem::{ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
 use crate::formats::cnmt::Cnmt;
+use crate::formats::nacp::Nacp;
 use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaContentType, NcaSectionType};
 use crate::storage::{ReadableStorage, ReadableStorageExt};
 use crate::types::{NcaId, TitleId};
@@ -9,6 +10,7 @@ use itertools::Itertools;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::Arc;
 use tracing::warn;
 
 #[derive(Snafu, Debug)]
@@ -19,6 +21,7 @@ pub enum NcasFromFsError {
     },
 }
 
+#[derive(Debug)]
 struct Ncas<S: ReadableStorage>(HashMap<NcaId, Nca<S>>);
 
 fn get_nca_id(filename: &str) -> Option<NcaId> {
@@ -54,7 +57,35 @@ impl<S: ReadableStorage> Ncas<S> {
 }
 
 #[derive(Debug)]
-pub struct Title(Cnmt);
+pub struct Title {
+    metadata: Cnmt,
+    control: Nacp,
+    ncas: Vec<NcaId>,
+    main_nca_id: NcaId,
+    control_nca_id: NcaId,
+}
+
+fn read_control<S: ReadableStorage>(nca: &Nca<S>) -> Nacp {
+    let fs = nca
+        .get_fs(NcaSectionType::Data, IntegrityCheckLevel::Full)
+        .expect("TODO: remove the panic");
+
+    dbg!(fs
+        .root()
+        .entries_recursive()
+        .map(|v| v.0)
+        .collect::<Vec<_>>());
+
+    let file = fs
+        .open_file("/control.nacp")
+        .expect("TODO: remove the panic");
+    let control = file
+        .storage()
+        .expect("TODO: remove the panic")
+        .read_all()
+        .expect("TODO: remove the panic");
+    Nacp::read(&mut std::io::Cursor::new(control)).expect("TODO: remove the panic")
+}
 
 #[derive(Debug)]
 struct Titles(HashMap<TitleId, Title>);
@@ -77,7 +108,40 @@ impl Titles {
                     let cnmt = Cnmt::read(&mut std::io::Cursor::new(cnmt)).expect("Malformed CNMT");
 
                     let title_id = cnmt.title_id;
-                    titles.insert(title_id, Title(cnmt));
+                    let ncas = cnmt
+                        .meta_tables
+                        .content_entries
+                        .iter()
+                        .map(|e| (e.nca_id, ncas.0.get(&e.nca_id).expect("Missing NCA")))
+                        .collect::<Vec<_>>();
+
+                    let main_nca_id = *ncas
+                        .iter()
+                        .find(|(_, n)| {
+                            matches!(
+                                n.content_type(),
+                                NcaContentType::Program | NcaContentType::Data
+                            )
+                        })
+                        .map(|(id, _)| id)
+                        .expect("Missing main NCA");
+                    let (control_nca_id, control_nca) = *ncas
+                        .iter()
+                        .find(|(_, n)| n.content_type() == NcaContentType::Control)
+                        .expect("Missing control NCA");
+
+                    let control = read_control(control_nca);
+
+                    titles.insert(
+                        title_id,
+                        Title {
+                            metadata: cnmt,
+                            control,
+                            ncas: ncas.into_iter().map(|(id, _)| id).collect(),
+                            main_nca_id,
+                            control_nca_id,
+                        },
+                    );
                 } else {
                     warn!(
                         "NCA {:?} is missing data section, even though it's a Meta NCA",
@@ -91,8 +155,10 @@ impl Titles {
     }
 }
 
+#[derive(Debug)]
 pub struct SwitchFs<F: ReadableFileSystem> {
     ncas: Ncas<F::Storage>,
+    titles: Titles,
 }
 
 impl<F: ReadableFileSystem> SwitchFs<F> {
@@ -102,11 +168,8 @@ impl<F: ReadableFileSystem> SwitchFs<F> {
         // TODO: import tickets from the FS
 
         let ncas = Ncas::from_fs(&key_set, fs)?;
-        dbg!(ncas.0.keys().collect::<Vec<_>>());
         let titles = Titles::from_ncas(&ncas);
 
-        dbg!(titles);
-
-        Ok(Self { ncas })
+        Ok(Self { ncas, titles })
     }
 }

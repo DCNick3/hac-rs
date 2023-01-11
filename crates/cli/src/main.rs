@@ -136,4 +136,6 @@ fn main() {
     );
 
     let switch_fs = SwitchFs::new(&keyset, &nsp).unwrap();
+
+    println!("{:#?}", switch_fs);
 }

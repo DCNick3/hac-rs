@@ -336,8 +336,6 @@ pub struct Nacp {
     pub crash_screenshot_for_dev: CrashScreenshotForDevValue,
     pub contents_availability_transition_policy: u8,
     pub reserved3404: HexData<4>,
-    #[br(dbg)]
     pub accessible_launch_required_version: AccessibleLaunchRequiredVersionValue,
-    #[br(dbg)]
     pub reserved3448: HexData<0xbb8>,
 }
