@@ -1,14 +1,18 @@
 use crate::hexstring::HexData;
-use binrw::{BinRead, BinWrite, NullString};
+use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use enum_map::{Enum, EnumMap};
 
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
 pub struct ApplicationTitle {
     #[brw(pad_size_to = 0x200)]
-    pub name: NullString,
+    #[br(try_map = |s: binrw::NullString| String::from_utf8(s.0))]
+    #[bw(map = |s| binrw::NullString(s.clone().into_bytes()))]
+    pub name: String,
     #[brw(pad_size_to = 0x100)]
-    pub publisher: NullString,
+    #[br(try_map = |s: binrw::NullString| String::from_utf8(s.0))]
+    #[bw(map = |s| binrw::NullString(s.clone().into_bytes()))]
+    pub publisher: String,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, BinRead, BinWrite)]
@@ -338,4 +342,10 @@ pub struct Nacp {
     pub reserved3404: HexData<4>,
     pub accessible_launch_required_version: AccessibleLaunchRequiredVersionValue,
     pub reserved3448: HexData<0xbb8>,
+}
+
+impl Nacp {
+    pub fn any_title(&self) -> Option<&ApplicationTitle> {
+        self.title.values().find(|x| !x.name.is_empty())
+    }
 }

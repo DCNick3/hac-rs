@@ -66,7 +66,7 @@ impl<D: ReadableDirectory> Iterator for RecursiveDirectoryIter<D> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(mut it) = self.inner.last_mut() {
+            if let Some(it) = self.inner.last_mut() {
                 match it.next() {
                     None => {
                         self.inner.pop().unwrap();
@@ -80,6 +80,8 @@ impl<D: ReadableDirectory> Iterator for RecursiveDirectoryIter<D> {
                         self.path.push_str(d.name());
                         break Some((self.path.clone(), Entry::Directory(d)));
                     }
+                    #[allow(dead_code, unreachable_patterns)]
+                    // Clion doesn't understand that this is unreachable and wants me to "cover all match args"
                     _ => unreachable!(),
                 }
             } else {

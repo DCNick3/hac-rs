@@ -1,4 +1,5 @@
 pub use binrw;
+pub use snafu;
 
 mod brw_utils;
 pub mod crypto;

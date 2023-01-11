@@ -1,8 +1,9 @@
 use crate::hexstring::HexData;
 use binrw::{BinRead, BinWrite};
+use derive_more::Display;
 use hex::FromHexError;
 use snafu::Snafu;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
 #[derive(Snafu, Debug)]
@@ -35,7 +36,13 @@ impl Debug for TitleId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
+impl Display for TitleId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+#[derive(Debug, Display, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
 pub struct NcaId(HexData<0x10>);
 impl FromStr for NcaId {
     type Err = IdParseError;

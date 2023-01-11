@@ -4,6 +4,7 @@ use hac::filesystem::{
 };
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
 use hac::formats::pfs::PartitionFileSystem;
+use hac::snafu::{ErrorCompat, ResultExt, Snafu, Whatever};
 use hac::storage::ReadableStorageExt;
 use hac::switch_fs::SwitchFs;
 use hac::ticket::Ticket;
@@ -43,8 +44,15 @@ fn extract_fs(root_dir: impl ReadableDirectory, path: &Path) {
     }
 }
 
+#[derive(Snafu, Debug)]
+#[snafu(crate_root(hac::snafu))]
+struct Error {
+    message: String,
+    source: Whatever,
+}
+
 #[allow(unused)]
-fn test_nca() {
+fn test_nca() -> Result<(), Whatever> {
     let base_name = "test_files/de16b5aa443dd171bb90b10b88ec3d3b".to_string();
 
     let keyset = KeySet::from_system(None).unwrap();
@@ -76,10 +84,11 @@ fn test_nca() {
     let duration = start.elapsed();
 
     println!("Written the section 2 in {:?}", duration);
+    Ok(())
 }
 
 #[allow(unused)]
-fn test_tik() {
+fn test_tik() -> Result<(), Whatever> {
     use hac::binrw::BinRead;
 
     let file =
@@ -89,10 +98,11 @@ fn test_tik() {
     let ticket = Ticket::read(&mut cursor).unwrap();
 
     println!("{:#?}", ticket);
+    Ok(())
 }
 
 #[allow(unused)]
-fn test_cnmt() {
+fn test_cnmt() -> Result<(), Whatever> {
     use hac::binrw::BinRead;
 
     let file = std::fs::read(
@@ -103,29 +113,31 @@ fn test_cnmt() {
     let cnmt = hac::formats::cnmt::Cnmt::read(&mut cursor).unwrap();
 
     println!("{:#?}", cnmt);
+    Ok(())
 }
 
 #[allow(unused)]
-fn test_nacp() {
+fn test_nacp() -> Result<(), Whatever> {
     use hac::binrw::BinRead;
 
-    let file =
-        std::fs::read("test_files/0c93fc88e2a0ea63477c6f854a12b457.0dir/control.nacp").unwrap();
+    let file = std::fs::read("test_files/0c93fc88e2a0ea63477c6f854a12b457.0dir/control.nacp")
+        .whatever_context("Opening nacp")?;
     let mut cursor = std::io::Cursor::new(file);
-    let nacp = hac::formats::nacp::Nacp::read(&mut cursor).unwrap();
+    let nacp = hac::formats::nacp::Nacp::read(&mut cursor).whatever_context("Reading nacp")?;
 
     println!("{:#?}", nacp);
+    Ok(())
 }
 
-fn main() {
-    tracing_subscriber::fmt::init();
-
+#[allow(unused)]
+fn test_switch_fs() -> Result<(), Whatever> {
     let file = "test_files/fmf_010079300AD54000.nsp";
-    let keyset = KeySet::from_system(None).unwrap();
+    let keyset = KeySet::from_system(None).whatever_context("Opening system keyset")?;
 
-    let nsp_storage = hac::storage::FileRoStorage::open(file).unwrap();
+    let nsp_storage =
+        hac::storage::FileRoStorage::open(file).whatever_context("Opening NSP storage")?;
 
-    let nsp = PartitionFileSystem::new(nsp_storage).unwrap();
+    let nsp = PartitionFileSystem::new(nsp_storage).whatever_context("Opening NSP fs")?;
 
     println!(
         "Files in the NSP:\n{:#?}",
@@ -135,7 +147,29 @@ fn main() {
             .collect::<Vec<_>>()
     );
 
-    let switch_fs = SwitchFs::new(&keyset, &nsp).unwrap();
+    let switch_fs = SwitchFs::new(&keyset, &nsp).whatever_context("Opening SwitchFs")?;
 
-    println!("{:#?}", switch_fs);
+    println!("SwitchFs titles:");
+    for (&title_id, title) in switch_fs.title_set() {
+        let app_title = title.control.any_title().unwrap();
+
+        println!(
+            "  {}: {:?} by {:?}",
+            title_id, app_title.name, app_title.publisher
+        );
+    }
+
+    Ok(())
+}
+
+fn main() {
+    tracing_subscriber::fmt::init();
+
+    if let Err(e) = test_switch_fs() {
+        eprintln!("Error: {}", e);
+        eprintln!("Caused by:");
+        for cause in e.iter_chain().skip(1) {
+            eprintln!(" - {}", cause);
+        }
+    }
 }

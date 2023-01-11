@@ -1,5 +1,5 @@
 mod crypt_storage;
-mod filesystem;
+pub mod filesystem;
 mod structs;
 mod verification_storage;
 
