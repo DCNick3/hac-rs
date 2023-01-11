@@ -87,7 +87,8 @@ fn test_tik() {
     println!("{:#?}", ticket);
 }
 
-fn main() {
+#[allow(unused)]
+fn test_cnmt() {
     use hac::binrw::BinRead;
 
     let file = std::fs::read(
@@ -98,4 +99,15 @@ fn main() {
     let cnmt = hac::fs::cnmt::Cnmt::read(&mut cursor).unwrap();
 
     println!("{:#?}", cnmt);
+}
+
+fn main() {
+    use hac::binrw::BinRead;
+
+    let file =
+        std::fs::read("test_files/0c93fc88e2a0ea63477c6f854a12b457.0dir/control.nacp").unwrap();
+    let mut cursor = std::io::Cursor::new(file);
+    let nacp = hac::fs::nacp::Nacp::read(&mut cursor).unwrap();
+    
+    println!("{:#?}", nacp);
 }
