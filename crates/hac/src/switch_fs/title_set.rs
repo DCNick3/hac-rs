@@ -3,13 +3,14 @@ use crate::formats::cnmt::Cnmt;
 use crate::formats::nacp::Nacp;
 use crate::formats::nca::filesystem::NcaOpenError;
 use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaContentType, NcaSectionType};
+use crate::ids::{NcaId, TitleId};
 use crate::storage::{ReadableStorage, ReadableStorageExt, StorageError};
 use crate::switch_fs::nca_set::NcaSet;
-use crate::types::{NcaId, TitleId};
 use binrw::BinRead;
 use itertools::Itertools;
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::collections::HashMap;
+use tracing::info;
 
 #[derive(Snafu, Debug)]
 pub enum ControlParseError {
@@ -65,7 +66,7 @@ pub struct TitleSetParseError {
 pub struct Title {
     pub metadata: Cnmt,
     pub control: Nacp,
-    pub ncas: Vec<NcaId>,
+    pub nca_ids: Vec<NcaId>,
     pub meta_nca_id: NcaId,
     pub main_nca_id: NcaId,
     pub control_nca_id: NcaId,
@@ -93,6 +94,7 @@ fn parse_title<S: ReadableStorage>(
     let fs = meta_nca
         .get_fs(NcaSectionType::Data, IntegrityCheckLevel::Full)
         .context(MetaNoDataSectionSnafu)?;
+    // find the cnmt file (it's name changes, but always ends with .cnmt)
     let cnmt = fs
         .root()
         .entries_recursive()
@@ -103,21 +105,32 @@ fn parse_title<S: ReadableStorage>(
             0 => TitleParseError::MetaNoCnmt {},
             _ => TitleParseError::MetaMultipleCnmt {},
         })?;
+    // read the cnmt file
     let cnmt = cnmt
         .storage()
         .context(MetaCnmtOpenSnafu)?
         .read_all()
         .context(MetaCnmtReadSnafu)?;
+    // and parse it!
     let cnmt = Cnmt::read(&mut std::io::Cursor::new(cnmt)).context(MetaCnmtParseSnafu)?;
 
+    // now we know the title id and other NCAs used by the title, try to look them up
     let title_id = cnmt.title_id;
     let ncas = cnmt
         .meta_tables
         .content_entries
         .iter()
-        .map(|e| (e.nca_id, nca_set.get(&e.nca_id).expect("Missing NCA")))
-        .collect::<Vec<_>>();
+        .map(|e| {
+            Ok((
+                e.nca_id,
+                nca_set
+                    .get(&e.nca_id)
+                    .context(MissingNcaSnafu { nca_id: e.nca_id })?,
+            ))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
+    // now identify the main and control NCAs by their content type
     let main_nca_id = *ncas
         .iter()
         .find(|(_, n)| {
@@ -140,7 +153,7 @@ fn parse_title<S: ReadableStorage>(
         Title {
             metadata: cnmt,
             control,
-            ncas: ncas.into_iter().map(|(id, _)| id).collect(),
+            nca_ids: ncas.into_iter().map(|(id, _)| id).collect(),
             meta_nca_id,
             main_nca_id,
             control_nca_id,
@@ -157,6 +170,7 @@ pub fn title_set_from_ncas<S: ReadableStorage>(
 
     for (&id, nca) in ncas {
         if nca.content_type() == NcaContentType::Meta {
+            info!("Parsing title for meta nca {}", id);
             let (title_id, title) =
                 parse_title(id, nca, ncas).context(TitleSetParseSnafu { meta_nca_id: id })?;
             titles.insert(title_id, title);

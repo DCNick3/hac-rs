@@ -39,7 +39,8 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "binrw"
 version = "0.10.0"
-source = "git+https://github.com/jam1garner/binrw?rev=b6f51d71eb4d80b7c4073e74922638812ab9e9d5#b6f51d71eb4d80b7c4073e74922638812ab9e9d5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f846d8732b2a55b569b885852ecc925a2b1f24568f4707f8b1ccd5dc6805ea9b"
 dependencies = [
  "array-init",
  "binrw_derive",
@@ -49,7 +50,8 @@ dependencies = [
 [[package]]
 name = "binrw_derive"
 version = "0.10.0"
-source = "git+https://github.com/jam1garner/binrw?rev=b6f51d71eb4d80b7c4073e74922638812ab9e9d5#b6f51d71eb4d80b7c4073e74922638812ab9e9d5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c2aa66a5e35daf7f91ed44c945886597ef4c327f34f68b6bbf22951a250ceeb"
 dependencies = [
  "either",
  "owo-colors",
@@ -302,7 +304,7 @@ dependencies = [
  "enum-map",
  "hex",
  "itertools",
- "num",
+ "num-integer",
  "rust-ini",
  "serde",
  "sha2",
@@ -437,69 +439,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43db66d1170d347f9a065114077f7dccb00c1b9478c89384490a3425279a4606"
-dependencies = [
- "num-bigint",
- "num-complex",
- "num-integer",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ae39348c8bc5fbd7f40c727a9925f03517afd2ab27d46702108b6a7e5414c19"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
 dependencies = [
  "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-iter"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
-dependencies = [
- "autocfg",
- "num-bigint",
- "num-integer",
  "num-traits",
 ]
 
@@ -784,19 +729,7 @@ checksum = "8ce8c33a8d48bd45d624a6e523445fd21ec13d3653cd51f681abf67418f54eb8"
 dependencies = [
  "cfg-if",
  "pin-project-lite",
- "tracing-attributes",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-attributes"
-version = "0.1.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -30,23 +30,6 @@ pub struct AesKey(HexData<0x10>);
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AesXtsKey(HexData<0x20>);
 
-/// Identifies a title key.
-#[derive(
-    Debug,
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Hash,
-    Ord,
-    PartialOrd,
-    Serialize,
-    Deserialize,
-    BinRead,
-    BinWrite,
-)]
-pub struct RightsId(HexData<0x10>);
-
 fn parse_key(s: &str, result: &mut [u8]) -> Result<(), KeyParseError> {
     hex::decode_to_slice(s, result).map_err(|e| match e {
         FromHexError::InvalidHexCharacter { c, index } => {
@@ -89,15 +72,6 @@ impl FromStr for TitleKey {
     }
 }
 
-impl FromStr for RightsId {
-    type Err = KeyParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut result = [0; 0x10];
-        parse_key(s, &mut result).map(|_| RightsId(HexData(result)))
-    }
-}
-
 impl TitleKey {
     pub fn decrypt(&self, title_kek: AesKey) -> AesKey {
         title_kek.derive_key(&self.0 .0)
@@ -107,12 +81,6 @@ impl TitleKey {
 impl From<[u8; 0x10]> for TitleKey {
     fn from(data: [u8; 0x10]) -> Self {
         TitleKey(HexData(data))
-    }
-}
-
-impl RightsId {
-    pub fn is_empty(&self) -> bool {
-        self.0 .0.iter().all(|&x| x == 0)
     }
 }
 

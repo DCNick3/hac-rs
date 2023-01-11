@@ -1,4 +1,4 @@
-use num::Integer;
+use num_integer::Integer;
 use snafu::Snafu;
 use std::io::BufReader;
 use std::path::Path;

@@ -1,4 +1,5 @@
-use crate::crypto::{AesKey, AesXtsKey, KeyParseError, RightsId, TitleKey};
+use crate::crypto::{AesKey, AesXtsKey, KeyParseError, TitleKey};
+use crate::ids::{IdParseError, RightsId};
 use crate::ticket::Ticket;
 use binrw::{BinRead, BinWrite};
 use ini::Properties;
@@ -73,7 +74,7 @@ pub enum KeySetParseError {
     #[snafu(display("Could not parse rightsid {}: {}", rights_id, source))]
     RightsIdParse {
         rights_id: String,
-        source: KeyParseError,
+        source: IdParseError,
     },
     #[snafu(display("Could not parse title key for rightsid {:?}: {}", rights_id, source))]
     TitleKeyParse {

@@ -1,6 +1,7 @@
 use crate::crypto::keyset::KeySet;
-use crate::crypto::{RightsId, TitleKey};
+use crate::crypto::TitleKey;
 use crate::hexstring::HexData;
+use crate::ids::RightsId;
 use binrw::{BinRead, BinWrite, NullString};
 use bitflags::bitflags;
 

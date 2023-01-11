@@ -1,5 +1,5 @@
 use crate::hexstring::HexData;
-use crate::types::{NcaId, TitleId};
+use crate::ids::{NcaId, TitleId};
 use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use std::io::SeekFrom;

@@ -1,7 +1,7 @@
 use crate::crypto::keyset::KeyAreaKeyIndex;
-use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey, RightsId};
+use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey};
 use crate::hexstring::HexData;
-use crate::types::TitleId;
+use crate::ids::{RightsId, TitleId};
 use binrw::{BinRead, BinWrite};
 use std::fmt::Debug;
 

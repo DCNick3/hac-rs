@@ -5,7 +5,7 @@ use crate::storage::{
     ReadableBlockStorage, ReadableBlockStorageExt, ReadableStorage, StorageError,
 };
 use digest::Digest;
-use num::Integer;
+use num_integer::Integer;
 use sha2::Sha256;
 use std::ops::{Deref, DerefMut};
 use std::slice::SliceIndex;

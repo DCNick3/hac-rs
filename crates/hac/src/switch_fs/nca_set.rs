@@ -1,7 +1,7 @@
 use crate::crypto::keyset::KeySet;
 use crate::filesystem::{ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
 use crate::formats::nca::Nca;
-use crate::types::NcaId;
+use crate::ids::NcaId;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use tracing::info;
@@ -13,7 +13,7 @@ pub enum NcaSetParseError {
         source: crate::formats::nca::NcaError,
     },
     NcaFilenameParse {
-        source: crate::types::IdParseError,
+        source: crate::ids::IdParseError,
     },
 }
 

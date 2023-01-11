@@ -2,6 +2,7 @@ use crate::hexstring::HexData;
 use binrw::{BinRead, BinWrite};
 use derive_more::Display;
 use hex::FromHexError;
+use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
@@ -50,5 +51,37 @@ impl FromStr for NcaId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut result = [0; 0x10];
         parse_id(s, &mut result).map(|_| NcaId(HexData(result)))
+    }
+}
+
+/// Identifies a title key in the keyset.
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Serialize,
+    Deserialize,
+    BinRead,
+    BinWrite,
+)]
+pub struct RightsId(HexData<0x10>);
+
+impl RightsId {
+    pub fn is_empty(&self) -> bool {
+        self.0 .0.iter().all(|&x| x == 0)
+    }
+}
+
+impl FromStr for RightsId {
+    type Err = IdParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut result = [0; 0x10];
+        parse_id(s, &mut result).map(|_| RightsId(HexData(result)))
     }
 }
