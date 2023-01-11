@@ -132,20 +132,20 @@ fn parse_title<S: ReadableStorage>(
     // and parse it!
     let cnmt = Cnmt::read(&mut std::io::Cursor::new(cnmt)).context(MetaCnmtParseSnafu)?;
 
+    #[allow(clippy::match_single_binding)]
     let nca_ids: Vec<_> = match cnmt.ty {
-        ContentMetaType::Patch =>
         // patches list ALL the ncas in the meta_tables, including the base game and previous updates
         // we don't want that
-        {
-            cnmt.meta_tables
-                .extended_data
-                .as_ref()
-                .unwrap()
-                .fragment_sets
-                .iter()
-                .map(|v| v.nca_id_new)
-                .collect()
-        }
+        // UPD: Hmmm, it seems that not all patches are created equal. Some do not have much in terms of extended data at all...
+        // ContentMetaType::Patch => cnmt
+        //     .meta_tables
+        //     .extended_data
+        //     .as_ref()
+        //     .unwrap()
+        //     .fragment_sets
+        //     .iter()
+        //     .map(|v| v.nca_id_new)
+        //     .collect(),
         _ => cnmt
             .meta_tables
             .content_entries
@@ -157,13 +157,17 @@ fn parse_title<S: ReadableStorage>(
     // now we know the other NCAs used by the title, try to look them up
     let ncas = nca_ids
         .into_iter()
-        .map(|nca_id| {
-            Ok((
+        .filter_map(|nca_id| {
+            Some((
                 nca_id,
-                nca_set.get(&nca_id).context(MissingNcaSnafu { nca_id })?,
+                // note: here we ignore the missing NCAs
+                // this allows us to work with some patches that ¿list too much NCAs?
+                nca_set.get(&nca_id)
+                    // .context(MissingNcaSnafu { nca_id })
+                    ?,
             ))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Vec<_>>();
 
     // now identify the main and control NCAs by their content type
     let main_nca_id = *ncas

@@ -1,4 +1,5 @@
 mod structs;
+mod open_file;
 
 use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use crate::formats::pfs::structs::{get_string, PartitionFsHeader};
