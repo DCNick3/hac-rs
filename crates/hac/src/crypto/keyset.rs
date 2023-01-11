@@ -91,6 +91,7 @@ pub enum SystemKeysetError {
 }
 
 #[derive(Snafu, Debug)]
+#[snafu(display("Missing title key for RightsId {}", rights_id))]
 pub struct MissingTitleKeyError {
     pub rights_id: RightsId,
 }

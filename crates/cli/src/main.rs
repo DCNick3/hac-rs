@@ -132,6 +132,7 @@ fn test_nacp() -> Result<(), Whatever> {
 #[allow(unused)]
 fn test_switch_fs() -> Result<(), Whatever> {
     let file = "test_files/fmf_010079300AD54000.nsp";
+    // let file = "test_files/fmf_010079300AD54800.nsp";
     let keyset = KeySet::from_system(None).whatever_context("Opening system keyset")?;
 
     let nsp_storage =
@@ -150,12 +151,13 @@ fn test_switch_fs() -> Result<(), Whatever> {
     let switch_fs = SwitchFs::new(&keyset, &nsp).whatever_context("Opening SwitchFs")?;
 
     println!("SwitchFs titles:");
-    for (&title_id, title) in switch_fs.title_set() {
-        let app_title = title.control.any_title().unwrap();
+    for (&(title_id, version), title) in switch_fs.title_set() {
+        let app_title = title.any_title().unwrap();
+        let ty = title.ty();
 
         println!(
-            "  {}: {:?} by {:?}",
-            title_id, app_title.name, app_title.publisher
+            "  [{}][v{}] {:?}: {:?} by {:?}",
+            title_id, version, ty, app_title.name, app_title.publisher
         );
     }
 

@@ -1,6 +1,5 @@
 use crate::hexstring::HexData;
 use binrw::{BinRead, BinWrite};
-use derive_more::Display;
 use hex::FromHexError;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
@@ -33,24 +32,39 @@ pub struct TitleId(u64);
 
 impl Debug for TitleId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:016x}", self.0)
+        write!(f, "{:016X}", self.0)
     }
 }
-
 impl Display for TitleId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self, f)
     }
 }
 
-#[derive(Debug, Display, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
-pub struct NcaId(HexData<0x10>);
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
+pub struct NcaId([u8; 0x10]);
+
+// wanna lowercase, hence the separate type
+impl Debug for NcaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+impl Display for NcaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
 impl FromStr for NcaId {
     type Err = IdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut result = [0; 0x10];
-        parse_id(s, &mut result).map(|_| NcaId(HexData(result)))
+        parse_id(s, &mut result).map(|_| NcaId(result))
     }
 }
 
@@ -74,6 +88,12 @@ pub struct RightsId(HexData<0x10>);
 impl RightsId {
     pub fn is_empty(&self) -> bool {
         self.0 .0.iter().all(|&x| x == 0)
+    }
+}
+
+impl Display for RightsId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

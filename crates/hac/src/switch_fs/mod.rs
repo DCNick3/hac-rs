@@ -1,3 +1,4 @@
+mod application_set;
 mod nca_set;
 mod title_set;
 
@@ -8,7 +9,7 @@ use std::fmt::Debug;
 
 pub use nca_set::{nca_set_from_fs, NcaSet, NcaSetParseError};
 pub use title_set::{
-    title_set_from_ncas, ControlParseError, TitleParseError, TitleSet, TitleSetParseError,
+    title_set_from_nca_set, ControlParseError, TitleParseError, TitleSet, TitleSetParseError,
 };
 
 #[derive(Snafu, Debug)]
@@ -32,7 +33,7 @@ impl<F: ReadableFileSystem> SwitchFs<F> {
         // TODO: import tickets from the FS
 
         let nca_set = nca_set_from_fs(&key_set, fs).context(NcaSetParseSnafu)?;
-        let title_set = title_set_from_ncas(&nca_set).context(TitleSetParseSnafu)?;
+        let title_set = title_set_from_nca_set(&nca_set).context(TitleSetParseSnafu)?;
 
         Ok(Self { nca_set, title_set })
     }

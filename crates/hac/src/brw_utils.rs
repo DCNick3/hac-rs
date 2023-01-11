@@ -42,3 +42,28 @@ pub fn write_u48<W: Write + Seek>(
     high.write_le(writer)?;
     Ok(())
 }
+
+pub fn read_u48_rev<R: Read + Seek>(
+    reader: &mut R,
+    options: &ReadOptions,
+    _args: (),
+) -> BinResult<u64> {
+    assert_eq!(options.endian(), Endian::Little);
+    let high = u16::read_le(reader)?;
+    let low = u32::read_le(reader)?;
+    Ok((high as u64) << 32 | (low as u64))
+}
+
+pub fn write_u48_rev<W: Write + Seek>(
+    value: &u64,
+    writer: &mut W,
+    options: &WriteOptions,
+    _args: (),
+) -> BinResult<()> {
+    assert_eq!(options.endian(), Endian::Little);
+    let high = (value >> 32) as u16;
+    let low = (value & 0xFFFF_FFFF) as u32;
+    low.write_le(writer)?;
+    high.write_le(writer)?;
+    Ok(())
+}

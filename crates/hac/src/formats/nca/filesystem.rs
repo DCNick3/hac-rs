@@ -3,9 +3,9 @@ use crate::formats::pfs::{PartitionFileSystem, PfsParseError};
 use crate::formats::romfs::{RomFileSystem, RomFsParseError};
 use crate::formats::{pfs, romfs};
 use crate::storage::ReadableStorage;
-use derive_more::Display;
 use snafu::AsErrorSource;
 use std::error::Error;
+use std::fmt::Display;
 
 type NcaFileStorage<S> = pfs::FileStorage<S>;
 
@@ -33,10 +33,17 @@ pub enum NcaDirectoryIter<'a, S: ReadableStorage> {
     Pfs(pfs::DirectoryIter<'a, S>),
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug)]
 pub enum NcaOpenError {
     Romfs(romfs::RomfsOpenError),
     Pfs(pfs::PfsOpenError),
+}
+
+impl Display for NcaOpenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: make nicer?
+        std::fmt::Debug::fmt(self, f)
+    }
 }
 
 impl AsErrorSource for NcaOpenError {

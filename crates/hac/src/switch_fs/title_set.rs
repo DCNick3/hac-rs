@@ -1,5 +1,5 @@
 use crate::filesystem::{ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
-use crate::formats::cnmt::Cnmt;
+use crate::formats::cnmt::{Cnmt, ContentMetaType};
 use crate::formats::nacp::Nacp;
 use crate::formats::nca::filesystem::NcaOpenError;
 use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaContentType, NcaSectionType};
@@ -42,7 +42,7 @@ pub enum TitleParseError {
     #[snafu(display("Failed to parse the CNMT file"))]
     MetaCnmtParse { source: binrw::Error },
 
-    #[snafu(display("NCA mentioned in the metadata not found"))]
+    #[snafu(display("NCA {nca_id} mentioned in the metadata not found"))]
     MissingNca { nca_id: NcaId },
     #[snafu(display("Could not determine the main NCA for the title"))]
     MissingMainNca {},
@@ -72,6 +72,24 @@ pub struct Title {
     pub control_nca_id: NcaId,
 }
 
+impl Title {
+    pub fn any_title(&self) -> Option<&crate::formats::nacp::ApplicationTitle> {
+        self.control.any_title()
+    }
+
+    pub fn title_id(&self) -> TitleId {
+        self.metadata.title_id
+    }
+
+    pub fn version(&self) -> u32 {
+        self.metadata.version
+    }
+
+    pub fn ty(&self) -> ContentMetaType {
+        self.metadata.ty
+    }
+}
+
 fn read_control<S: ReadableStorage>(nca: &Nca<S>) -> Result<Nacp, ControlParseError> {
     let fs = nca
         .get_fs(NcaSectionType::Data, IntegrityCheckLevel::Full)
@@ -90,7 +108,7 @@ fn parse_title<S: ReadableStorage>(
     meta_nca_id: NcaId,
     meta_nca: &Nca<S>,
     nca_set: &NcaSet<S>,
-) -> Result<(TitleId, Title), TitleParseError> {
+) -> Result<Title, TitleParseError> {
     let fs = meta_nca
         .get_fs(NcaSectionType::Data, IntegrityCheckLevel::Full)
         .context(MetaNoDataSectionSnafu)?;
@@ -114,18 +132,35 @@ fn parse_title<S: ReadableStorage>(
     // and parse it!
     let cnmt = Cnmt::read(&mut std::io::Cursor::new(cnmt)).context(MetaCnmtParseSnafu)?;
 
-    // now we know the title id and other NCAs used by the title, try to look them up
-    let title_id = cnmt.title_id;
-    let ncas = cnmt
-        .meta_tables
-        .content_entries
-        .iter()
-        .map(|e| {
+    let nca_ids: Vec<_> = match cnmt.ty {
+        ContentMetaType::Patch =>
+        // patches list ALL the ncas in the meta_tables, including the base game and previous updates
+        // we don't want that
+        {
+            cnmt.meta_tables
+                .extended_data
+                .as_ref()
+                .unwrap()
+                .fragment_sets
+                .iter()
+                .map(|v| v.nca_id_new)
+                .collect()
+        }
+        _ => cnmt
+            .meta_tables
+            .content_entries
+            .iter()
+            .map(|v| v.nca_id)
+            .collect(),
+    };
+
+    // now we know the other NCAs used by the title, try to look them up
+    let ncas = nca_ids
+        .into_iter()
+        .map(|nca_id| {
             Ok((
-                e.nca_id,
-                nca_set
-                    .get(&e.nca_id)
-                    .context(MissingNcaSnafu { nca_id: e.nca_id })?,
+                nca_id,
+                nca_set.get(&nca_id).context(MissingNcaSnafu { nca_id })?,
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -148,22 +183,21 @@ fn parse_title<S: ReadableStorage>(
 
     let control = read_control(control_nca).context(ControlParseSnafu { control_nca_id })?;
 
-    Ok((
-        title_id,
-        Title {
-            metadata: cnmt,
-            control,
-            nca_ids: ncas.into_iter().map(|(id, _)| id).collect(),
-            meta_nca_id,
-            main_nca_id,
-            control_nca_id,
-        },
-    ))
+    Ok(Title {
+        metadata: cnmt,
+        control,
+        nca_ids: ncas.into_iter().map(|(id, _)| id).collect(),
+        meta_nca_id,
+        main_nca_id,
+        control_nca_id,
+    })
 }
 
-pub type TitleSet = HashMap<TitleId, Title>;
+// Key is a pair of (TitleId, Version) to allow multiple versions of the same title
+// TODO: use a separate type for Version
+pub type TitleSet = HashMap<(TitleId, u32), Title>;
 
-pub fn title_set_from_ncas<S: ReadableStorage>(
+pub fn title_set_from_nca_set<S: ReadableStorage>(
     ncas: &NcaSet<S>,
 ) -> Result<TitleSet, TitleSetParseError> {
     let mut titles = HashMap::new();
@@ -171,9 +205,9 @@ pub fn title_set_from_ncas<S: ReadableStorage>(
     for (&id, nca) in ncas {
         if nca.content_type() == NcaContentType::Meta {
             info!("Parsing title for meta nca {}", id);
-            let (title_id, title) =
+            let title =
                 parse_title(id, nca, ncas).context(TitleSetParseSnafu { meta_nca_id: id })?;
-            titles.insert(title_id, title);
+            titles.insert((title.title_id(), title.version()), title);
         }
     }
 

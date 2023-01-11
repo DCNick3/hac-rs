@@ -132,15 +132,12 @@ impl<S: ReadableStorage> Nca<S> {
             NcaContentKeys::KeyArea { ctr, xts }
         };
 
-        let expected_session_count = if headers.nca_header.content_type == NcaContentType::Program {
-            3
+        let section_count = headers.fs_headers.iter().flatten().count();
+        if headers.nca_header.content_type == NcaContentType::Program {
+            assert!(matches!(section_count, 2 | 3)); // base NCA contain 3 sections, update NCA contain 2 sections (w/o the logo)
         } else {
-            1
+            assert_eq!(section_count, 1);
         };
-        assert_eq!(
-            headers.fs_headers.iter().flatten().count(),
-            expected_session_count
-        );
 
         Ok(Self {
             storage: SharedStorage::new(storage),
