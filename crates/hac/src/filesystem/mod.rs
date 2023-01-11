@@ -1,3 +1,5 @@
+pub mod merge_filesystem;
+
 use crate::storage::ReadableStorage;
 use snafu::AsErrorSource;
 use std::fmt::{Debug, Display};
@@ -42,7 +44,7 @@ pub trait ReadableDirectory: Sized {
 }
 
 pub trait ReadableFileSystem: Sized {
-    type File<'a>: ReadableFile<Storage = Self::Storage, Error = Self::OpenError> + 'a
+    type File<'a>: ReadableFile<Storage = Self::Storage, Error = Self::OpenError>
     where
         Self: 'a;
     type Directory<'a>: ReadableDirectory<File = Self::File<'a>>
@@ -52,6 +54,8 @@ pub trait ReadableFileSystem: Sized {
     type OpenError: Debug + Display + AsErrorSource;
 
     fn root(&self) -> Self::Directory<'_>;
+
+    // TODO: actually, those can be extension methods
     fn open_directory(&self, path: &str) -> Option<Self::Directory<'_>>;
     fn open_file(&self, path: &str) -> Option<Self::File<'_>>;
 }

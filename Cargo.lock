@@ -299,6 +299,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "hac",
+ "itertools",
  "tracing-subscriber",
 ]
 

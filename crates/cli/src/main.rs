@@ -1,4 +1,5 @@
 use hac::crypto::keyset::KeySet;
+use hac::filesystem::merge_filesystem::MergeFilesystem;
 use hac::filesystem::{
     Entry, ReadableDirectory, ReadableDirectoryExt, ReadableFile, ReadableFileSystem,
 };
@@ -8,6 +9,7 @@ use hac::snafu::{ErrorCompat, ResultExt, Snafu, Whatever};
 use hac::storage::ReadableStorageExt;
 use hac::switch_fs::SwitchFs;
 use hac::ticket::Ticket;
+use itertools::Itertools;
 use std::path::{Path, PathBuf};
 
 #[allow(unused)]
@@ -131,33 +133,49 @@ fn test_nacp() -> Result<(), Whatever> {
 
 #[allow(unused)]
 fn test_switch_fs() -> Result<(), Whatever> {
-    let file = "test_files/fmf_010079300AD54000.nsp";
+    let files = [
+        "test_files/fmf_010079300AD54000.nsp",
+        "test_files/fmf_010079300AD54800.nsp",
+    ];
+
+    // let file = "test_files/fmf_010079300AD54000.nsp";
     // let file = "test_files/fmf_010079300AD54800.nsp";
     let keyset = KeySet::from_system(None).whatever_context("Opening system keyset")?;
 
-    let nsp_storage =
-        hac::storage::FileRoStorage::open(file).whatever_context("Opening NSP storage")?;
+    let filesystems = files
+        .iter()
+        .map(|filename| {
+            let storage = hac::storage::FileRoStorage::open(filename)
+                .whatever_context("Opening NSP storage")?;
+            PartitionFileSystem::new(storage).whatever_context("Opening NSP fs")
+        })
+        .collect::<Result<_, Whatever>>()?;
 
-    let nsp = PartitionFileSystem::new(nsp_storage).whatever_context("Opening NSP fs")?;
+    let merged_fs = MergeFilesystem::new(filesystems);
 
     println!(
-        "Files in the NSP:\n{:#?}",
-        nsp.root()
+        "Files in the merged FS:\n{:#?}",
+        merged_fs
+            .root()
             .entries_recursive()
             .flat_map(|(n, e)| e.file().map(|_| n))
             .collect::<Vec<_>>()
     );
 
-    let switch_fs = SwitchFs::new(&keyset, &nsp).whatever_context("Opening SwitchFs")?;
+    let switch_fs = SwitchFs::new(&keyset, &merged_fs).whatever_context("Opening SwitchFs")?;
 
     println!("SwitchFs titles:");
-    for (&(title_id, version), title) in switch_fs.title_set() {
+    for (&(title_id, version), title) in switch_fs.title_set().iter().sorted_by_key(|v| v.0) {
         let app_title = title.any_title().unwrap();
         let ty = title.ty();
 
         println!(
-            "  [{}][v{}] {:?}: {:?} by {:?}",
-            title_id, version, ty, app_title.name, app_title.publisher
+            "  [{}][{:>10}] {:>12}: {:?} by {:?}",
+            title_id,
+            format!("v{}", version),
+            format!("{:?}", ty),
+            app_title.name,
+            app_title.publisher
         );
     }
 
