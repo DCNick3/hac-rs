@@ -1,6 +1,6 @@
 use crate::crypto::{AesKey, AesXtsKey, KeyParseError, TitleKey};
+use crate::formats::ticket::Ticket;
 use crate::ids::{IdParseError, RightsId};
-use crate::ticket::Ticket;
 use binrw::{BinRead, BinWrite};
 use ini::Properties;
 use snafu::{ResultExt, Snafu};

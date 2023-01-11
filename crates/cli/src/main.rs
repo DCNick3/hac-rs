@@ -5,11 +5,12 @@ use hac::filesystem::{
 };
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
 use hac::formats::pfs::PartitionFileSystem;
+use hac::formats::ticket::Ticket;
 use hac::snafu::{ErrorCompat, ResultExt, Snafu, Whatever};
 use hac::storage::ReadableStorageExt;
 use hac::switch_fs::SwitchFs;
-use hac::ticket::Ticket;
 use itertools::Itertools;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 #[allow(unused)]
@@ -133,10 +134,21 @@ fn test_nacp() -> Result<(), Whatever> {
 
 #[allow(unused)]
 fn test_switch_fs() -> Result<(), Whatever> {
-    let files = [
-        "test_files/fmf_010079300AD54000.nsp",
-        "test_files/fmf_010079300AD54800.nsp",
-    ];
+    let files = walkdir::WalkDir::new("test_files/nsp")
+        .into_iter()
+        .filter_map(|v| v.ok())
+        .filter(|e| {
+            e.file_type().is_file() && e.path().extension().and_then(OsStr::to_str) == Some("nsp")
+        })
+        .map(|v| v.path().to_owned())
+        .collect::<Vec<_>>();
+
+    println!("Found {} nsp files: {:#?}", files.len(), files);
+
+    // let files = [
+    //     "test_files/fmf_010079300AD54000.nsp",
+    //     "test_files/fmf_010079300AD54800.nsp",
+    // ];
 
     // let file = "test_files/fmf_010079300AD54000.nsp";
     // let file = "test_files/fmf_010079300AD54800.nsp";
@@ -177,6 +189,24 @@ fn test_switch_fs() -> Result<(), Whatever> {
             app_title.name,
             app_title.publisher
         );
+    }
+
+    println!("SwitchFs applications:");
+    for application in switch_fs.application_set().values() {
+        let title_id = application.application_title_id;
+        // TODO: do the base titles always have version 0?
+        let base_title = switch_fs.title_set().get(&(title_id, 0)).unwrap();
+        let name = base_title.any_title().unwrap().name.as_str();
+        println!("[{}] {}", application.application_title_id, name);
+        println!("  [        v0] {}.nca", application.main_nca_id);
+        for patch in &application.patches {
+            let version = patch.version;
+            println!(
+                "  [{:>10}] {}.nca",
+                format!("v{}", version),
+                patch.main_nca_id
+            );
+        }
     }
 
     Ok(())

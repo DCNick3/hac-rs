@@ -9,4 +9,5 @@ edition = "2021"
 hac = { path = "../hac" }
 clap = "4.0.32"
 itertools = "0.10.5"
+walkdir = "2.3.2"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
