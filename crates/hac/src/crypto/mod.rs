@@ -104,6 +104,12 @@ impl TitleKey {
     }
 }
 
+impl From<[u8; 0x10]> for TitleKey {
+    fn from(data: [u8; 0x10]) -> Self {
+        TitleKey(HexData(data))
+    }
+}
+
 impl RightsId {
     pub fn is_empty(&self) -> bool {
         self.0 .0.iter().all(|&x| x == 0)

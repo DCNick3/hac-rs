@@ -256,6 +256,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "binrw",
+ "bitflags",
  "cipher",
  "ctr",
  "digest",

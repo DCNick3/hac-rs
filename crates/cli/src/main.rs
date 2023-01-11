@@ -2,6 +2,7 @@ use hac::crypto::keyset::KeySet;
 use hac::fs::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use hac::fs::nca::{IntegrityCheckLevel, Nca};
 use hac::fs::storage::ReadableStorageExt;
+use hac::ticket::Ticket;
 use std::path::{Path, PathBuf};
 
 #[allow(unused)]
@@ -38,7 +39,8 @@ fn extract_fs(root_dir: impl ReadableDirectory, path: &Path) {
     }
 }
 
-fn main() {
+#[allow(unused)]
+fn test_nca() {
     let base_name = "test_files/de16b5aa443dd171bb90b10b88ec3d3b".to_string();
 
     let keyset = KeySet::from_system(None).unwrap();
@@ -70,4 +72,16 @@ fn main() {
     let duration = start.elapsed();
 
     println!("Written the section 2 in {:?}", duration);
+}
+
+fn main() {
+    use hac::binrw::BinRead;
+
+    let file =
+        std::fs::read("test_files/fmf_010079300AD54000/010079300ad540000000000000000005.tik")
+            .unwrap();
+    let mut cursor = std::io::Cursor::new(file);
+    let ticket = Ticket::read(&mut cursor).unwrap();
+
+    println!("{:#?}", ticket);
 }

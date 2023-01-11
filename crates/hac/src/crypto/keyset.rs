@@ -1,4 +1,5 @@
 use crate::crypto::{AesKey, AesXtsKey, KeyParseError, RightsId, TitleKey};
+use crate::ticket::Ticket;
 use ini::Properties;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
@@ -220,6 +221,11 @@ impl KeySet {
                 index: None,
             },
         })
+    }
+
+    pub fn import_ticket(&mut self, ticket: &Ticket) {
+        self.title_keys
+            .insert(ticket.rights_id, ticket.title_key(self));
     }
 
     pub fn title_kek(&self, index: u8) -> Result<AesKey, MissingKeyError> {
