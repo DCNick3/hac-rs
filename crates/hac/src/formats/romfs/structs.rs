@@ -34,7 +34,8 @@ impl RomId {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, BinRead, BinWrite)]
 #[brw(little)]
-pub struct RomFsEntry<T: BinRead<Args = ()> + BinWrite<Args = ()>> {
+pub struct RomFsEntry<T: for<'a> BinRead<Args<'a> = ()> + for<'a> BinWrite<Args<'a> = ()> + 'static>
+{
     pub parent: RomId,
     pub value: T,
     pub next: RomId,

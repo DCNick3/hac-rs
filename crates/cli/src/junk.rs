@@ -113,7 +113,7 @@ pub fn test_cnmt() -> Result<(), Whatever> {
     )
     .unwrap();
     let mut cursor = std::io::Cursor::new(file);
-    let cnmt = hac::formats::cnmt::Cnmt::read(&mut cursor).unwrap();
+    let cnmt = hac::formats::cnmt::PackagedContentMeta::read(&mut cursor).unwrap();
 
     println!("{:#?}", cnmt);
     Ok(())
@@ -138,7 +138,8 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
         .into_iter()
         .filter_map(|v| v.ok())
         .filter(|e| {
-            e.file_type().is_file() && e.path().extension().and_then(OsStr::to_str) == Some("nsp")
+            (e.file_type().is_file() || e.file_type().is_symlink())
+                && e.path().extension().and_then(OsStr::to_str) == Some("nsp")
         })
         .map(|v| v.path().to_owned())
         .collect::<Vec<_>>();
@@ -157,11 +158,20 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
     let filesystems = files
         .iter()
         .map(|filename| {
-            let storage = hac::storage::FileRoStorage::open(filename)
-                .whatever_context("Opening NSP storage")?;
-            PartitionFileSystem::new(storage).whatever_context("Opening NSP fs")
+            let storage =
+                hac::storage::FileRoStorage::open(filename).with_whatever_context(|_| {
+                    format!("Opening NSP storage in {}", filename.display())
+                })?;
+            PartitionFileSystem::new(storage)
+                .with_whatever_context(|_| format!("Opening NSP fs in {}", filename.display()))
         })
-        .collect::<Result<_, Whatever>>()?;
+        .collect::<Result<Vec<_>, Whatever>>()?;
+
+    for (path, fs) in files.iter().zip(filesystems.iter()) {
+        for (filename, _) in fs.root().entries_recursive() {
+            println!("{:50} -> {}", filename, path.display());
+        }
+    }
 
     let merged_fs = MergeFilesystem::new(filesystems);
 
@@ -174,7 +184,8 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
             .collect::<Vec<_>>()
     );
 
-    let switch_fs = SwitchFs::new(&keyset, &merged_fs).whatever_context("Opening SwitchFs")?;
+    let switch_fs =
+        SwitchFs::new(&keyset, &merged_fs).whatever_context("Could not open SwitchFs")?;
 
     println!("SwitchFs titles:");
     for (&(title_id, version), title) in switch_fs.title_set().iter().sorted_by_key(|v| v.0) {

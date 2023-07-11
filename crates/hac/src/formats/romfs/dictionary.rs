@@ -12,13 +12,17 @@ struct Buckets(#[br(parse_with = binrw::until_eof)] Vec<RomId>);
 struct Entries(#[br(parse_with = binrw::until_eof)] Vec<u8>);
 
 #[derive(Debug)]
-pub struct RomFsDictionary<T: BinRead<Args = ()> + BinWrite<Args = ()>> {
+pub struct RomFsDictionary<
+    T: for<'a> BinRead<Args<'a> = ()> + for<'a> BinWrite<Args<'a> = ()> + 'static,
+> {
     buckets: Vec<RomId>,
     entries: Vec<u8>,
     phantom: PhantomData<T>,
 }
 
-impl<T: BinRead<Args = ()> + BinWrite<Args = ()>> RomFsDictionary<T> {
+impl<T: for<'a> BinRead<Args<'a> = ()> + for<'a> BinWrite<Args<'a> = ()> + 'static>
+    RomFsDictionary<T>
+{
     pub fn new(buckets: Vec<RomId>, entries: Vec<u8>) -> Self {
         Self {
             buckets,

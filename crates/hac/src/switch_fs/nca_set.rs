@@ -1,7 +1,7 @@
 use crate::crypto::keyset::KeySet;
 use crate::filesystem::{ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
 use crate::formats::nca::Nca;
-use crate::ids::NcaId;
+use crate::ids::ContentId;
 use indexmap::IndexMap;
 use snafu::{ResultExt, Snafu};
 use tracing::info;
@@ -9,7 +9,7 @@ use tracing::info;
 #[derive(Snafu, Debug)]
 pub enum NcaSetParseError {
     NcaParse {
-        nca_id: NcaId,
+        nca_id: ContentId,
         source: crate::formats::nca::NcaError,
     },
     NcaFilenameParse {
@@ -17,12 +17,12 @@ pub enum NcaSetParseError {
     },
 }
 
-pub type NcaSet<S> = IndexMap<NcaId, Nca<S>>;
+pub type NcaSet<S> = IndexMap<ContentId, Nca<S>>;
 
 /// Parse an NCA filename
 /// Return value of Ok(None) means "doesn't look like an NCA filename"
 /// Return value of Err(E) means "looks like an NCA filename, but it's invalid (non-hex chars or wrong length)"
-fn parse_nca_filename(filename: &str) -> Result<Option<NcaId>, NcaSetParseError> {
+fn parse_nca_filename(filename: &str) -> Result<Option<ContentId>, NcaSetParseError> {
     let filename = filename
         .strip_suffix(".cnmt.nca")
         .or_else(|| filename.strip_suffix(".nca"));

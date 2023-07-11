@@ -8,16 +8,17 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 hex = "0.4.3"
-rust-ini = "0.18.0"
+rust-ini = "0.19.0"
 snafu = { version = "0.7.4", features = [] }
 serde = { version = "1.0.152", features = ["derive"] } # TODO: make optional
 dirs-next = "2.0.0" # TODO: make optional
-binrw = "0.10.0"
+binrw = "0.11.2"
 #binrw = { git = "https://github.com/jam1garner/binrw", rev = "b6f51d71eb4d80b7c4073e74922638812ab9e9d5" }
 num-integer = "0.1.45"
 bitflags = "1.3.2"
 enum-map = "2.4.2"
 itertools = "0.10.5"
+indexmap = "1.9.3"
 
 cipher = "0.4.3"
 aes = "0.8.2"
@@ -28,4 +29,3 @@ digest = "0.10.6"
 sha2 = "0.10.6"
 
 tracing = { version = "0.1.37", default-features = false }
-indexmap = "2.0.0"
