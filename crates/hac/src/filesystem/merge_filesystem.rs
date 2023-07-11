@@ -1,5 +1,5 @@
 use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 pub struct MergeDirectory<'a, F: ReadableFileSystem + 'a> {
     name: String,
@@ -35,8 +35,8 @@ impl<'a, F: ReadableFileSystem + 'a> ReadableDirectory for MergeDirectory<'a, F>
         // the directories are merged recursively
         // unfortunately, iteration requires allocation because we can't know in advance which iterator will have which entry
 
-        let mut files = HashMap::new();
-        let mut directories = HashMap::new();
+        let mut files = IndexMap::new();
+        let mut directories = IndexMap::new();
 
         for dir in &self.directories {
             for entry in dir.entries() {

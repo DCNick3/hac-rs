@@ -2,7 +2,7 @@ use crate::formats::cnmt::{ContentMetaType, TypeSpecificContentMeta};
 use crate::ids::{NcaId, TitleId};
 use crate::storage::ReadableStorage;
 use crate::switch_fs::{NcaSet, TitleSet};
-use std::collections::{HashMap, HashSet};
+use indexmap::{IndexMap, IndexSet};
 
 #[derive(Debug)]
 pub struct ApplicationPatch {
@@ -20,14 +20,14 @@ pub struct Application {
     pub patches: Vec<ApplicationPatch>,
 }
 
-pub type ApplicationSet = HashMap<TitleId, Application>;
+pub type ApplicationSet = IndexMap<TitleId, Application>;
 
 pub fn build_application_set<S: ReadableStorage>(
     _nca_set: &NcaSet<S>,
     title_set: &TitleSet,
 ) -> ApplicationSet {
-    let mut interested_patch_ids = HashSet::new();
-    let mut applications = HashMap::new();
+    let mut interested_patch_ids = IndexSet::new();
+    let mut applications = IndexMap::new();
 
     // find the applications
     for title in title_set.values() {
@@ -44,7 +44,7 @@ pub fn build_application_set<S: ReadableStorage>(
             let application = Application {
                 application_title_id: title.title_id(),
                 patch_title_id,
-                main_nca_id: title.main_nca_id,
+                main_nca_id: title.main_nca_id.expect("FIXME"), // TODO
                 patches: vec![],
             };
 
@@ -68,7 +68,7 @@ pub fn build_application_set<S: ReadableStorage>(
 
             let application = applications.get_mut(&application_title_id).unwrap();
             application.patches.push(ApplicationPatch {
-                main_nca_id: title.main_nca_id,
+                main_nca_id: title.main_nca_id.expect("FIXME"), // TODO
                 version: title.version(),
             });
         }

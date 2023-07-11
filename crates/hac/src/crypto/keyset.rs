@@ -2,9 +2,9 @@ use crate::crypto::{AesKey, AesXtsKey, KeyParseError, TitleKey};
 use crate::formats::ticket::Ticket;
 use crate::ids::{IdParseError, RightsId};
 use binrw::{BinRead, BinWrite};
+use indexmap::IndexMap;
 use ini::Properties;
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -17,7 +17,7 @@ pub struct KeySet {
     key_area_key_application: [Option<AesKey>; 0x20],
     key_area_key_ocean: [Option<AesKey>; 0x20],
     key_area_key_system: [Option<AesKey>; 0x20],
-    title_keys: HashMap<RightsId, TitleKey>,
+    title_keys: IndexMap<RightsId, TitleKey>,
 }
 
 pub struct KeyName {
@@ -211,7 +211,7 @@ impl KeySet {
             }
         })?;
 
-        let mut title_keys = HashMap::new();
+        let mut title_keys = IndexMap::new();
         for (rights_id, title_key) in title_keys_ini.general_section().iter() {
             let rights_id = rights_id.parse().context(RightsIdParseSnafu {
                 rights_id: rights_id.to_string(),

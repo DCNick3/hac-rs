@@ -7,10 +7,10 @@ use crate::ids::{NcaId, TitleId};
 use crate::storage::{ReadableStorage, ReadableStorageExt, StorageError};
 use crate::switch_fs::nca_set::NcaSet;
 use binrw::BinRead;
+use indexmap::IndexMap;
 use itertools::Itertools;
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::collections::HashMap;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Snafu, Debug)]
 pub enum ControlParseError {
@@ -68,7 +68,7 @@ pub struct Title {
     pub control: Nacp,
     pub nca_ids: Vec<NcaId>,
     pub meta_nca_id: NcaId,
-    pub main_nca_id: NcaId,
+    pub main_nca_id: Option<NcaId>,
     pub control_nca_id: NcaId,
 }
 
@@ -162,15 +162,21 @@ fn parse_title<S: ReadableStorage>(
                 nca_id,
                 // note: here we ignore the missing NCAs
                 // this allows us to work with some patches that ¿list too much NCAs?
-                nca_set.get(&nca_id)
-                    // .context(MissingNcaSnafu { nca_id })
-                    ?,
+                if let Some(nca) = nca_set.get(&nca_id) {
+                    nca
+                } else {
+                    warn!(
+                        "NCA {} mentioned in the metadata {} not found",
+                        nca_id, meta_nca_id
+                    );
+                    return None;
+                },
             ))
         })
         .collect::<Vec<_>>();
 
     // now identify the main and control NCAs by their content type
-    let main_nca_id = *ncas
+    let main_nca_id = ncas
         .iter()
         .find(|(_, n)| {
             matches!(
@@ -179,7 +185,8 @@ fn parse_title<S: ReadableStorage>(
             )
         })
         .map(|(id, _)| id)
-        .context(MissingMainNcaSnafu)?;
+        .copied();
+    // .context(MissingMainNcaSnafu)?;
     let (control_nca_id, control_nca) = *ncas
         .iter()
         .find(|(_, n)| n.content_type() == NcaContentType::Control)
@@ -199,12 +206,12 @@ fn parse_title<S: ReadableStorage>(
 
 // Key is a pair of (TitleId, Version) to allow multiple versions of the same title
 // TODO: use a separate type for Version
-pub type TitleSet = HashMap<(TitleId, u32), Title>;
+pub type TitleSet = IndexMap<(TitleId, u32), Title>;
 
 pub fn title_set_from_nca_set<S: ReadableStorage>(
     ncas: &NcaSet<S>,
 ) -> Result<TitleSet, TitleSetParseError> {
-    let mut titles = HashMap::new();
+    let mut titles = IndexMap::new();
 
     for (&id, nca) in ncas {
         if nca.content_type() == NcaContentType::Meta {

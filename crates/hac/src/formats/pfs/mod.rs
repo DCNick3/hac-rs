@@ -1,5 +1,5 @@
-mod structs;
 mod open_file;
+mod structs;
 
 use crate::filesystem::{Entry, ReadableDirectory, ReadableFile, ReadableFileSystem};
 use crate::formats::pfs::structs::{get_string, PartitionFsHeader};
@@ -7,8 +7,8 @@ use crate::storage::{
     ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, SliceStorageError,
 };
 use binrw::BinRead;
+use indexmap::IndexMap;
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::Seek;
 
@@ -31,7 +31,7 @@ struct FileInfo {
 #[derive(Debug)]
 pub struct PartitionFileSystem<S: ReadableStorage> {
     storage: SharedStorage<S>,
-    files: HashMap<String, FileInfo>,
+    files: IndexMap<String, FileInfo>,
     header_size: u64,
 }
 
@@ -68,7 +68,7 @@ impl<'a, S: ReadableStorage> Debug for File<'a, S> {
 #[derive(Debug)]
 pub struct DirectoryIter<'a, S: ReadableStorage> {
     fs: &'a PartitionFileSystem<S>,
-    iter: std::collections::hash_map::Iter<'a, String, FileInfo>,
+    iter: indexmap::map::Iter<'a, String, FileInfo>,
 }
 
 impl<'a, S: ReadableStorage> Iterator for DirectoryIter<'a, S> {
