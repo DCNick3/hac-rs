@@ -1,12 +1,13 @@
 use crate::hexstring::HexData;
-use crate::ids::{AnyId, ApplicationId, ContentId, PatchId};
+use crate::ids::{AnyId, ApplicationId, ContentId, DataPatchId, PatchId};
+use crate::version::Version;
 use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use std::io::SeekFrom;
 
 pub mod patch_meta_extended_data;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, BinRead, BinWrite)]
 #[brw(repr = u8)]
 pub enum ContentMetaType {
     // Unknown = 0,
@@ -37,7 +38,7 @@ pub enum StorageId {
     Any = 6,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, BinRead, BinWrite)]
 #[brw(repr = u8)]
 pub enum ContentInstallType {
     Full = 0,
@@ -45,10 +46,10 @@ pub enum ContentInstallType {
     // Unknown = 7,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, BinRead, BinWrite)]
 pub struct ContentMetaKey {
-    pub title_id: AnyId,
-    pub version: u32,
+    pub id: AnyId,
+    pub version: Version,
     pub ty: ContentMetaType,
     #[brw(pad_after = 2)]
     pub install_ty: ContentInstallType,
@@ -90,21 +91,23 @@ pub enum ExtendedMetaHeader {
     #[br(pre_assert(meta_type == ContentMetaType::Application))]
     Application {
         patch_id: PatchId,
-        required_system_version: u32,
-        required_application_version: u32,
+        required_system_version: Version,
+        required_application_version: Version,
     },
     #[br(pre_assert(meta_type == ContentMetaType::Patch))]
     Patch {
         application_id: ApplicationId,
-        required_system_version: u32,
+        required_system_version: Version,
         #[brw(pad_after = 8)]
         extended_data_size: u32,
     },
     #[br(pre_assert(meta_type == ContentMetaType::AddOnContent))]
     AddOnContent {
         application_id: ApplicationId,
-        required_application_version: u32,
+        required_application_version: Version,
+        #[brw(pad_after = 3)]
         content_accessibilities: u8,
+        data_patch_id: DataPatchId,
     },
     #[br(pre_assert(meta_type == ContentMetaType::Delta))]
     Delta {
@@ -113,6 +116,23 @@ pub enum ExtendedMetaHeader {
         extended_data_size: u32,
     },
     None,
+}
+
+impl ExtendedMetaHeader {
+    pub fn extended_data_size(&self) -> u32 {
+        match *self {
+            ExtendedMetaHeader::SystemUpdate { extended_data_size }
+            | ExtendedMetaHeader::Patch {
+                extended_data_size, ..
+            }
+            | ExtendedMetaHeader::Delta {
+                extended_data_size, ..
+            } => extended_data_size,
+            ExtendedMetaHeader::Application { .. }
+            | ExtendedMetaHeader::AddOnContent { .. }
+            | ExtendedMetaHeader::None => 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
@@ -131,7 +151,7 @@ pub enum NcmContentType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct ContentInfo {
-    pub content_id: ContentId,
+    pub id: ContentId,
     #[br(parse_with = crate::brw_utils::read_u40)]
     #[bw(write_with = crate::brw_utils::write_u40)]
     pub size: u64,
@@ -149,26 +169,26 @@ pub struct PackagedContentInfo {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct ContentMetaInfo {
     pub title_id: AnyId,
-    pub version: u32,
+    pub version: Version,
     pub ty: NcmContentType,
     #[brw(pad_after = 2)]
     pub attributes: ContentMetaAttribute,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
-#[br(import(meta_type: ContentMetaType))]
+#[br(import(meta_type: ContentMetaType, extended_data_size: u32))]
 pub enum ExtendedData {
-    #[br(pre_assert(meta_type == ContentMetaType::Patch))]
+    #[br(pre_assert(extended_data_size != 0 && meta_type == ContentMetaType::Patch))]
     Patch(patch_meta_extended_data::PatchMetaExtendedData),
-    #[br(pre_assert(meta_type == ContentMetaType::Application))]
+    #[br(pre_assert(extended_data_size == 0))]
     None,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
 pub struct PackagedContentMeta {
-    pub title_id: AnyId,
-    pub version: u32,
+    pub id: AnyId,
+    pub version: Version,
     pub ty: ContentMetaType,
     pub field_d: u8,
     /// Must match the size from the extended header struct for this content meta type (SystemUpdate, Application, Patch, AddOnContent, Delta).
@@ -181,7 +201,7 @@ pub struct PackagedContentMeta {
     pub storage_id: StorageId,
     pub content_install_type: ContentInstallType,
     pub install_state: ContentMetaInstallState,
-    pub required_download_system_version: u32,
+    pub required_download_system_version: Version,
 
     #[brw(pad_before = 4)]
     #[br(args(ty, extended_header_size))]
@@ -193,8 +213,19 @@ pub struct PackagedContentMeta {
     #[br(count = content_meta_count)]
     pub content_meta_info: Vec<ContentMetaInfo>,
     // TODO: be more robust by checking/enforcing extended data size (from extended header)
-    #[br(args(ty))]
+    #[br(args(ty, extended_header.extended_data_size()))]
     pub extended_data: ExtendedData,
 
     pub hash: HexData<0x20>,
+}
+
+impl PackagedContentMeta {
+    pub fn content_meta_key(&self) -> ContentMetaKey {
+        ContentMetaKey {
+            id: self.id,
+            version: self.version,
+            ty: self.ty,
+            install_ty: self.content_install_type,
+        }
+    }
 }

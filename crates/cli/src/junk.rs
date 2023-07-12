@@ -8,7 +8,7 @@ use hac::formats::pfs::PartitionFileSystem;
 use hac::formats::ticket::Ticket;
 use hac::snafu::{ResultExt, Snafu, Whatever};
 use hac::storage::ReadableStorageExt;
-use hac::switch_fs::SwitchFs;
+use hac::switch_fs::{AnyContentInfo, SwitchFs};
 use itertools::Itertools;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -126,7 +126,8 @@ pub fn test_nacp() -> Result<(), Whatever> {
     let file = std::fs::read("test_files/0c93fc88e2a0ea63477c6f854a12b457.0dir/control.nacp")
         .whatever_context("Opening nacp")?;
     let mut cursor = std::io::Cursor::new(file);
-    let nacp = hac::formats::nacp::Nacp::read(&mut cursor).whatever_context("Reading nacp")?;
+    let nacp = hac::formats::nacp::ApplicationControlProperty::read(&mut cursor)
+        .whatever_context("Reading nacp")?;
 
     println!("{:#?}", nacp);
     Ok(())
@@ -187,38 +188,79 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
     let switch_fs =
         SwitchFs::new(&keyset, &merged_fs).whatever_context("Could not open SwitchFs")?;
 
-    println!("SwitchFs titles:");
-    for (&(title_id, version), title) in switch_fs.title_set().iter().sorted_by_key(|v| v.0) {
-        let app_title = title.any_title().unwrap();
-        let ty = title.ty();
+    println!("SwitchFs contents:");
+    for (&key, content) in switch_fs.title_set().iter().sorted_by_key(|v| v.0) {
+        let id = key.id;
+        let version = key.version;
+        match content {
+            AnyContentInfo::Application(app) => {
+                let app_title = app.any_title().unwrap();
+                println!(
+                    "Application {} v{}: {:?} by {:?}",
+                    id, version, app_title.name, app_title.publisher,
+                );
 
-        println!(
-            "  [{}][{:>10}] {:>12}: {:?} by {:?}",
-            title_id,
-            format!("v{}", version),
-            format!("{:?}", ty),
-            app_title.name,
-            app_title.publisher
-        );
-    }
+                for program in app.programs.iter() {
+                    let program_title = program.control.any_title().unwrap();
+                    println!(
+                        "    Program {}: {:?} by {:?}",
+                        program.id, program_title.name, program_title.publisher
+                    );
+                }
+            }
+            AnyContentInfo::Patch(patch) => {
+                let app_title = patch.any_title().unwrap();
+                println!(
+                    "Patch       {} v{}: {:?} by {:?}",
+                    id, version, app_title.name, app_title.publisher,
+                );
 
-    println!("SwitchFs applications:");
-    for application in switch_fs.application_set().values() {
-        let title_id = application.application_title_id;
-        // TODO: do the base titles always have version 0?
-        let base_title = switch_fs.title_set().get(&(title_id, 0)).unwrap();
-        let name = base_title.any_title().unwrap().name.as_str();
-        println!("[{}] {}", application.application_title_id, name);
-        println!("  [        v0] {}.nca", application.main_nca_id);
-        for patch in &application.patches {
-            let version = patch.version;
-            println!(
-                "  [{:>10}] {}.nca",
-                format!("v{}", version),
-                patch.main_nca_id
-            );
+                for program in patch.programs.iter() {
+                    let program_title = program.control.any_title().unwrap();
+                    println!(
+                        "    Program {}: {:?} by {:?}",
+                        program.id, program_title.name, program_title.publisher
+                    );
+                }
+            }
+            AnyContentInfo::Data(data) => {
+                println!(
+                    "Data        {} v{} for {}",
+                    id, version, data.application_id
+                );
+            }
+            AnyContentInfo::DataPatch(_) => todo!(),
         }
+
+        // let ty = content.ty();
+        //
+        // println!(
+        //     "  [{}][{:>10}] {:>12}: {:?} by {:?}",
+        //     title_id,
+        //     format!("v{}", version),
+        //     format!("{:?}", ty),
+        //     app_title.name,
+        //     app_title.publisher
+        // );
     }
+
+    // println!("SwitchFs applications:");
+    // for application in switch_fs.application_set().values() {
+    //     let title_id = application.application_title_id;
+    //     // TODO: do the base titles always have version 0?
+    //     let base_title = switch_fs.title_set().get(&(title_id, 0)).unwrap();
+    //     let name = base_title.any_title().unwrap().name.as_str();
+    //     println!("[{}] {}", application.application_title_id, name);
+    //     println!("  [        v0] {}.nca", application.main_nca_id);
+    //     for patch in &application.patches {
+    //         let version = patch.version;
+    //         println!(
+    //             "  [{:>10}] {}.nca",
+    //             format!("v{}", version),
+    //             patch.main_nca_id
+    //         );
+    //     }
+    // }
 
     Ok(())
 }

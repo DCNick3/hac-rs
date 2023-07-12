@@ -1,10 +1,11 @@
 use crate::hexstring::HexData;
+use crate::ids::AnyId;
 use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use enum_map::{Enum, EnumMap};
 
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
-pub struct ApplicationTitle {
+pub struct ProgramTitle {
     #[brw(pad_size_to = 0x200)]
     #[br(try_map = |s: binrw::NullString| String::from_utf8(s.0))]
     #[bw(map = |s| binrw::NullString(s.clone().into_bytes()))]
@@ -285,11 +286,11 @@ pub enum CrashScreenshotForDevValue {
 
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
-pub struct Nacp {
+pub struct ApplicationControlProperty {
     // titles, one for each language
     #[br(map = EnumMap::from_array)]
     #[bw(map = |x| x.clone().into_array())]
-    pub title: EnumMap<Language, ApplicationTitle>,
+    pub title: EnumMap<Language, ProgramTitle>,
     pub isbn: HexData<37>,
     pub startup_user_account: StartupUserAccountValue,
     pub user_account_switch_lock: UserAccountSwitchLockValue,
@@ -305,9 +306,9 @@ pub struct Nacp {
     #[br(map = EnumMap::from_array)]
     #[bw(map = |x| x.into_array())]
     pub rating_age: EnumMap<Organization, i8>,
-    pub display_version: HexData<16>,
-    pub add_on_content_base_id: u64,
-    pub save_data_owner_id: u64,
+    pub display_version: HexData<16>, // TODO: this is a string
+    pub add_on_content_base_id: AnyId,
+    pub save_data_owner_id: AnyId,
     pub user_account_save_data_size: i64,
     pub user_account_save_data_journal_size: i64,
     pub device_save_data_size: i64,
@@ -356,8 +357,8 @@ pub struct Nacp {
     pub reserved3448: HexData<0xbb8>,
 }
 
-impl Nacp {
-    pub fn any_title(&self) -> Option<&ApplicationTitle> {
+impl ApplicationControlProperty {
+    pub fn any_title(&self) -> Option<&ProgramTitle> {
         self.title.values().find(|x| !x.name.is_empty())
     }
 }

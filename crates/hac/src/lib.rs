@@ -9,3 +9,4 @@ mod hexstring;
 pub mod ids;
 pub mod storage;
 pub mod switch_fs;
+pub mod version;

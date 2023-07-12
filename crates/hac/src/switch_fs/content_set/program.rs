@@ -1,0 +1,128 @@
+use crate::filesystem::{ReadableFile, ReadableFileSystem};
+use crate::formats::cnmt::{NcmContentType, PackagedContentMeta};
+use crate::formats::nacp::ApplicationControlProperty;
+use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaSectionType};
+use crate::ids::{ContentId, ProgramId};
+use crate::storage::{ReadableStorage, ReadableStorageExt};
+use crate::switch_fs::content_set::{
+    ControlNacpOpenSnafu, ControlNacpParseSnafu, ControlNacpReadSnafu, NoControlNacpSnafu,
+    NoDataSectionSnafu,
+};
+use crate::switch_fs::{ControlParseError, NcaSet, ProgramInfo};
+use binrw::BinRead;
+use indexmap::IndexMap;
+use snafu::{OptionExt, ResultExt, Snafu};
+
+#[derive(Snafu, Debug)]
+pub enum ProgramParseError {
+    #[snafu(display("Program is missing the Program NCA"))]
+    MissingProgramContent {},
+    #[snafu(display("Program is missing the Control NCA"))]
+    MissingControlContent {},
+    #[snafu(display("Could not parse the Control NCA {control_content_id} for the program"))]
+    ControlParse {
+        control_content_id: ContentId,
+        source: ControlParseError,
+    },
+}
+
+#[derive(Snafu, Debug)]
+pub struct ProgramsParseError {
+    program: ProgramId,
+    source: ProgramParseError,
+}
+
+fn read_control<S: ReadableStorage>(
+    nca: &Nca<S>,
+) -> Result<ApplicationControlProperty, ControlParseError> {
+    let fs = nca
+        .get_fs(NcaSectionType::Data, IntegrityCheckLevel::Full)
+        .context(NoDataSectionSnafu)?;
+
+    let file = fs.open_file("/control.nacp").context(NoControlNacpSnafu)?;
+    let control = file
+        .storage()
+        .context(ControlNacpOpenSnafu)?
+        .read_all()
+        .context(ControlNacpReadSnafu)?;
+    ApplicationControlProperty::read(&mut std::io::Cursor::new(control))
+        .context(ControlNacpParseSnafu)
+}
+
+struct ProgramInfoBuilder {
+    id: ProgramId,
+    program_content: Option<ContentId>,
+    control_content: Option<ContentId>,
+    html_document_content: Option<ContentId>,
+}
+
+impl ProgramInfoBuilder {
+    fn new(id: ProgramId) -> Self {
+        Self {
+            id,
+            program_content: None,
+            control_content: None,
+            html_document_content: None,
+        }
+    }
+
+    fn build<S: ReadableStorage>(
+        self,
+        nca_set: &NcaSet<S>,
+    ) -> Result<ProgramInfo, ProgramParseError> {
+        let program_content_id = self.program_content.context(MissingProgramContentSnafu)?;
+        let control_content_id = self.control_content.context(MissingControlContentSnafu)?;
+        let html_document_content_id = self.html_document_content;
+
+        let control = nca_set.get(&control_content_id).unwrap();
+        let control = read_control(control).context(ControlParseSnafu { control_content_id })?;
+
+        Ok(ProgramInfo {
+            id: self.id,
+            program_content_id,
+            control_content_id,
+            html_document_content_id,
+            control,
+        })
+    }
+}
+
+pub fn parse_programs<S: ReadableStorage>(
+    meta: &PackagedContentMeta,
+    // pre-condition: all the NCAs mentioned in the meta are in the NCA set
+    nca_set: &NcaSet<S>,
+) -> Result<Vec<ProgramInfo>, ProgramsParseError> {
+    let base_id = meta.id;
+    let mut builders = IndexMap::new();
+
+    for content in meta.content_info.iter() {
+        let content = content.content_info;
+
+        let program_id = ProgramId::new(base_id, content.id_offset);
+        let builder = builders
+            .entry(program_id)
+            .or_insert_with(|| ProgramInfoBuilder::new(program_id));
+
+        match content.ty {
+            NcmContentType::Program => builder.program_content = Some(content.id),
+            NcmContentType::Control => builder.control_content = Some(content.id),
+            NcmContentType::HtmlDocument => builder.html_document_content = Some(content.id),
+
+            NcmContentType::Meta
+            | NcmContentType::Data
+            | NcmContentType::LegalInformation
+            | NcmContentType::DeltaFragment => {
+                // ignore
+            }
+        }
+    }
+
+    builders
+        .into_iter()
+        .map(|(program, builder)| {
+            builder
+                .build(nca_set)
+                .context(ProgramsParseSnafu { program })
+        })
+        .collect()
+}

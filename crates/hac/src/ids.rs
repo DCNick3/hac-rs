@@ -48,6 +48,12 @@ macro_rules! define_some_id {
                 AnyId(id.0)
             }
         }
+
+        impl From<AnyId> for $ty {
+            fn from(id: AnyId) -> Self {
+                Self(id.0)
+            }
+        }
     };
 }
 
@@ -67,10 +73,16 @@ impl Display for AnyId {
 define_some_id!(ProgramId);
 define_some_id!(ApplicationId);
 define_some_id!(PatchId);
-define_some_id!(AddOnContentId);
-define_some_id!(DeltaId);
 define_some_id!(DataId);
 define_some_id!(DataPatchId);
+
+define_some_id!(DeltaId);
+
+impl ProgramId {
+    pub fn new(base: AnyId, offset: u8) -> Self {
+        Self(base.0 + offset as u64)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
 pub struct ContentId([u8; 0x10]);

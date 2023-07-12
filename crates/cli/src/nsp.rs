@@ -57,9 +57,9 @@ fn rename_one(opts: &RenameOpts, keys: &KeySet, path: &Utf8Path) -> Result<(), W
         "{}{}{} [{}][v{}].nsp",
         prefix,
         if prefix.is_empty() { "" } else { " " },
-        title.any_title().unwrap().name,
-        title.title_id(),
-        title.version(),
+        todo!("title.any_title().unwrap().name"),
+        todo!("title.title_id()"),
+        todo!("title.version()"),
     );
 
     if new_filename == old_filename {
