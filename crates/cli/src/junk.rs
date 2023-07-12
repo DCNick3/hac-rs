@@ -239,19 +239,19 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
     for application in switch_fs.application_set().values() {
         let title = application
             .versions
-            .first()
+            .values()
+            .next()
             .unwrap()
-            .1
             .programs
-            .first()
+            .values()
+            .next()
             .unwrap()
-            .1
             .control
             .any_title()
             .unwrap();
         println!("- [{}] {}", application.id, title.name);
-        for (_, version) in &application.versions {
-            for (_, program) in &version.programs {
+        for version in application.versions.values() {
+            for program in version.programs.values() {
                 println!(
                     "   {:>16} [{:<8}] [{}]: {}.nca{}",
                     "",
@@ -266,7 +266,7 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
             }
         }
 
-        for (_, addon) in &application.addons {
+        for addon in application.addons.values() {
             println!(
                 "   {:>16} [{:>8}] [{}]: {}.nca",
                 "", "AddOn", addon.id, addon.data_content_id,

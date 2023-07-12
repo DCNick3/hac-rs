@@ -12,9 +12,9 @@ use crate::storage::{ReadableStorage, ReadableStorageExt, StorageError};
 use crate::switch_fs::content_set::program::ProgramsParseError;
 use crate::switch_fs::nca_set::NcaSet;
 use binrw::BinRead;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use snafu::{OptionExt, ResultExt, Snafu};
+use std::collections::BTreeMap;
 use tracing::info;
 
 #[derive(Snafu, Debug)]
@@ -339,12 +339,12 @@ fn parse_content<S: ReadableStorage>(
     // let control = read_control(control_nca).context(ControlParseSnafu { control_nca_id })?;
 }
 
-pub type ContentSet = IndexMap<ContentMetaKey, AnyContentInfo>;
+pub type ContentSet = BTreeMap<ContentMetaKey, AnyContentInfo>;
 
 pub fn content_set_from_nca_set<S: ReadableStorage>(
     ncas: &NcaSet<S>,
 ) -> Result<ContentSet, ContentSetParseError> {
-    let mut titles = IndexMap::new();
+    let mut titles = BTreeMap::new();
 
     for (&id, nca) in ncas {
         if nca.content_type() == NcaContentType::Meta {

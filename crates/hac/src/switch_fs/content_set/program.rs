@@ -10,8 +10,8 @@ use crate::switch_fs::content_set::{
 };
 use crate::switch_fs::{ControlParseError, NcaSet, ProgramInfo};
 use binrw::BinRead;
-use indexmap::IndexMap;
 use snafu::{OptionExt, ResultExt, Snafu};
+use std::collections::BTreeMap;
 
 #[derive(Snafu, Debug)]
 pub enum ProgramParseError {
@@ -102,7 +102,7 @@ pub fn parse_programs<S: ReadableStorage>(
         } else {
             None
         };
-    let mut builders = IndexMap::new();
+    let mut builders = BTreeMap::new();
 
     for content in meta.content_info.iter() {
         let content = content.content_info;

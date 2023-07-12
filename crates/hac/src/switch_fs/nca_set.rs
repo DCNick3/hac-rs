@@ -2,8 +2,8 @@ use crate::crypto::keyset::KeySet;
 use crate::filesystem::{ReadableDirectoryExt, ReadableFile, ReadableFileSystem};
 use crate::formats::nca::Nca;
 use crate::ids::ContentId;
-use indexmap::IndexMap;
 use snafu::{ResultExt, Snafu};
+use std::collections::BTreeMap;
 use tracing::info;
 
 #[derive(Snafu, Debug)]
@@ -17,7 +17,7 @@ pub enum NcaSetParseError {
     },
 }
 
-pub type NcaSet<S> = IndexMap<ContentId, Nca<S>>;
+pub type NcaSet<S> = BTreeMap<ContentId, Nca<S>>;
 
 /// Parse an NCA filename
 /// Return value of Ok(None) means "doesn't look like an NCA filename"
@@ -37,7 +37,7 @@ pub fn nca_set_from_fs<F: ReadableFileSystem>(
     key_set: &KeySet,
     fs: &F,
 ) -> Result<NcaSet<F::Storage>, NcaSetParseError> {
-    let mut ncas = IndexMap::new();
+    let mut ncas = BTreeMap::new();
 
     for file in ReadableDirectoryExt::entries_recursive(&fs.root())
         .filter(|(n, _)| n.ends_with(".nca"))

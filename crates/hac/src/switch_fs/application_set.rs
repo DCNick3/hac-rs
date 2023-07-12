@@ -1,10 +1,9 @@
-use crate::formats::cnmt::{ContentMetaType, ExtendedMetaHeader};
 use crate::formats::nacp::ApplicationControlProperty;
-use crate::ids::{AnyId, ApplicationId, ContentId, DataId, PatchId, ProgramId};
+use crate::ids::{ApplicationId, ContentId, DataId, PatchId, ProgramId};
 use crate::storage::ReadableStorage;
 use crate::switch_fs::{AnyContentInfo, ContentSet, NcaSet, ProgramInfo};
 use crate::version::Version;
-use indexmap::{IndexMap, IndexSet};
+use std::collections::BTreeMap;
 use tracing::warn;
 
 #[derive(Debug)]
@@ -29,7 +28,7 @@ pub struct ApplicationVersion {
     pub version: Version,
     pub kind: VersionKind,
     pub meta_content_id: ContentId,
-    pub programs: IndexMap<ProgramId, Program>,
+    pub programs: BTreeMap<ProgramId, Program>,
 }
 
 #[derive(Debug)]
@@ -44,22 +43,22 @@ pub struct Application {
     pub id: ApplicationId,
     pub patch_id: PatchId,
     pub base_version: Version,
-    pub versions: IndexMap<Version, ApplicationVersion>,
-    pub addons: IndexMap<DataId, Addon>,
+    pub versions: BTreeMap<Version, ApplicationVersion>,
+    pub addons: BTreeMap<DataId, Addon>,
 }
 
-pub type ApplicationSet = IndexMap<ApplicationId, Application>;
+pub type ApplicationSet = BTreeMap<ApplicationId, Application>;
 
 pub fn build_application_set<S: ReadableStorage>(
     _nca_set: &NcaSet<S>,
     content_set: &ContentSet,
 ) -> ApplicationSet {
-    let mut applications = IndexMap::new();
+    let mut applications = BTreeMap::new();
 
     fn make_programs(
         programs: &[ProgramInfo],
         content_id: impl Fn(&ProgramInfo) -> (Option<ContentId>, ContentId),
-    ) -> IndexMap<ProgramId, Program> {
+    ) -> BTreeMap<ProgramId, Program> {
         programs
             .iter()
             .map(|pi| {
@@ -95,7 +94,7 @@ pub fn build_application_set<S: ReadableStorage>(
                     id: app.id,
                     patch_id: app.patch_id,
                     base_version: app_version.version,
-                    versions: IndexMap::from([(app_version.version, app_version)]),
+                    versions: BTreeMap::from([(app_version.version, app_version)]),
                     addons: Default::default(),
                 };
 
