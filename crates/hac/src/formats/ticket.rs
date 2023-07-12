@@ -40,9 +40,11 @@ pub enum LicenseType {
     Service,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct PropertyFlags(u32);
+
 bitflags! {
-    #[derive(BinRead, BinWrite)]
-    pub struct PropertyFlags: u32 {
+    impl PropertyFlags: u32 {
         const PRE_INSTALL = 1 << 0;
         const SHARED_TITLE = 1 << 1;
         const ALLOW_ALL_CONTENT = 1 << 2;

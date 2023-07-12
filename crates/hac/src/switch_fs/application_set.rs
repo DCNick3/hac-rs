@@ -1,5 +1,5 @@
 use crate::formats::cnmt::{ContentMetaType, ExtendedMetaHeader};
-use crate::ids::{ContentId, ProgramId};
+use crate::ids::{AnyId, ContentId};
 use crate::storage::ReadableStorage;
 use crate::switch_fs::{NcaSet, TitleSet};
 use indexmap::{IndexMap, IndexSet};
@@ -14,19 +14,19 @@ pub struct ApplicationPatch {
 
 #[derive(Debug)]
 pub struct Application {
-    pub application_title_id: ProgramId,
-    pub patch_title_id: ProgramId,
+    pub application_title_id: AnyId,
+    pub patch_title_id: AnyId,
     pub main_nca_id: ContentId,
     pub patches: Vec<ApplicationPatch>,
 }
 
-pub type ApplicationSet = IndexMap<ProgramId, Application>;
+pub type ApplicationSet = IndexMap<AnyId, Application>;
 
 pub fn build_application_set<S: ReadableStorage>(
     _nca_set: &NcaSet<S>,
     title_set: &TitleSet,
 ) -> ApplicationSet {
-    let mut interested_patch_ids = IndexSet::<ProgramId>::new();
+    let mut interested_patch_ids = IndexSet::<AnyId>::new();
     let mut applications = IndexMap::new();
 
     // find the applications
@@ -57,7 +57,7 @@ pub fn build_application_set<S: ReadableStorage>(
     // find the patches
     for (_, title) in title_set {
         if interested_patch_ids.contains(&title.title_id()) {
-            let application_title_id: ProgramId = if let ExtendedMetaHeader::Patch {
+            let application_title_id: AnyId = if let ExtendedMetaHeader::Patch {
                 application_id: application_title_id,
                 ..
             } = title.metadata.extended_header

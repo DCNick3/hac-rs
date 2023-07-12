@@ -27,7 +27,7 @@ fn parse_id(s: &str, result: &mut [u8]) -> Result<(), IdParseError> {
     Ok(())
 }
 
-macro_rules! define_program_subid {
+macro_rules! define_some_id {
     ($ty:ident) => {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
         pub struct $ty(u64);
@@ -43,33 +43,34 @@ macro_rules! define_program_subid {
             }
         }
 
-        impl From<$ty> for ProgramId {
+        impl From<$ty> for AnyId {
             fn from(id: $ty) -> Self {
-                ProgramId(id.0)
+                AnyId(id.0)
             }
         }
     };
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
-pub struct ProgramId(u64);
-impl Debug for ProgramId {
+pub struct AnyId(u64);
+impl Debug for AnyId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:016X}", self.0)
     }
 }
-impl Display for ProgramId {
+impl Display for AnyId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self, f)
     }
 }
 
-define_program_subid!(ApplicationId);
-define_program_subid!(PatchId);
-define_program_subid!(AddOnContentId);
-define_program_subid!(DeltaId);
-define_program_subid!(DataId);
-define_program_subid!(DataPatchId);
+define_some_id!(ProgramId);
+define_some_id!(ApplicationId);
+define_some_id!(PatchId);
+define_some_id!(AddOnContentId);
+define_some_id!(DeltaId);
+define_some_id!(DataId);
+define_some_id!(DataPatchId);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, BinRead, BinWrite)]
 pub struct ContentId([u8; 0x10]);

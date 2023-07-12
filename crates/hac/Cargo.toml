@@ -15,7 +15,7 @@ dirs-next = "2.0.0" # TODO: make optional
 binrw = "0.11.2"
 #binrw = { git = "https://github.com/jam1garner/binrw", rev = "b6f51d71eb4d80b7c4073e74922638812ab9e9d5" }
 num-integer = "0.1.45"
-bitflags = "1.3.2"
+bitflags = "2.3.2"
 enum-map = "2.4.2"
 itertools = "0.10.5"
 indexmap = "1.9.3"

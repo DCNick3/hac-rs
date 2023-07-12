@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 hac = { path = "../hac" }
-clap = { version = "4.0.32", features = ["derive"] }
+clap = { version = "4.3.4", features = ["derive"] }
 itertools = "0.10.5"
 walkdir = "2.3.2"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

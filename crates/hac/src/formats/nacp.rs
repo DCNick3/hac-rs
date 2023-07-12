@@ -121,9 +121,11 @@ pub enum AddOnContentRegistrationTypeValue {
     OnDemand = 1,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct AttributeFlagValue(u32);
+
 bitflags! {
-    #[derive(BinRead, BinWrite)]
-    pub struct AttributeFlagValue : u32
+    impl AttributeFlagValue : u32
     {
         const DEMO = 1 << 0;
         const RETAIL_INTERACTIVE_DISPLAY = 1 << 1;
@@ -213,9 +215,11 @@ pub enum HdcpValue {
     Required = 1,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct StartupUserAccountOptionFlagValue(u8);
+
 bitflags! {
-    #[derive(BinRead, BinWrite)]
-    pub struct StartupUserAccountOptionFlagValue : u8
+    impl StartupUserAccountOptionFlagValue : u8
     {
         const IS_OPTIONAL = 1 << 0;
     }
@@ -229,30 +233,38 @@ pub enum PlayLogQueryCapabilityValue {
     All = 2,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct RepairFlagValue(u8);
+
 bitflags! {
-  #[derive(BinRead, BinWrite)]
-  pub struct RepairFlagValue : u8 {
+  impl RepairFlagValue : u8 {
     const SUPPRESS_GAME_CARD_ACCESS = 1 << 0;
   }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct RequiredNetworkServiceLicenseOnLaunchValue(u8);
+
 bitflags! {
-  #[derive(BinRead, BinWrite)]
-  pub struct RequiredNetworkServiceLicenseOnLaunchValue : u8 {
+  impl RequiredNetworkServiceLicenseOnLaunchValue : u8 {
     const COMMON = 1 << 0;
   }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct JitConfigurationFlag(u64);
+
 bitflags! {
-  #[derive(BinRead, BinWrite)]
-  pub struct JitConfigurationFlag : u64 {
+  impl JitConfigurationFlag : u64 {
     const ENABLED = 1 << 0;
   }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct PlayReportPermissionValue(u8);
+
 bitflags! {
-  #[derive(BinRead, BinWrite)]
-  pub struct PlayReportPermissionValue : u8 {
+  impl PlayReportPermissionValue : u8 {
     const TARGET_MARKETING = 1 << 0;
   }
 }

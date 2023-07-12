@@ -1,8 +1,8 @@
 use crate::formats::cnmt::{
-    ContentInfo, ContentMetaKey, ContentMetaType, NcmContentType, PackagedContentInfo, UpdateType,
+    ContentInfo, ContentMetaKey, NcmContentType, PackagedContentInfo, UpdateType,
 };
 use crate::hexstring::HexData;
-use crate::ids::{ContentId, PatchId, ProgramId};
+use crate::ids::{ContentId, PatchId};
 use binrw::{BinRead, BinWrite};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, BinRead, BinWrite)]

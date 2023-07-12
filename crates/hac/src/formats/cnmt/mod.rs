@@ -1,5 +1,5 @@
 use crate::hexstring::HexData;
-use crate::ids::{ApplicationId, ContentId, PatchId, ProgramId};
+use crate::ids::{AnyId, ApplicationId, ContentId, PatchId};
 use binrw::{BinRead, BinWrite};
 use bitflags::bitflags;
 use std::io::SeekFrom;
@@ -47,25 +47,27 @@ pub enum ContentInstallType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct ContentMetaKey {
-    pub title_id: ProgramId,
+    pub title_id: AnyId,
     pub version: u32,
     pub ty: ContentMetaType,
     #[brw(pad_after = 2)]
     pub install_ty: ContentInstallType,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct ContentMetaAttribute(u8);
 bitflags! {
-    #[derive(BinRead, BinWrite)]
-    pub struct ContentMetaAttribute: u8 {
+    impl ContentMetaAttribute: u8 {
         const INCLUDES_EXFAT_DRIVER = 0x01;
         const REBOOTLESS = 0x02;
         const COMPACTED = 0x04;
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
+pub struct ContentMetaInstallState(u8);
 bitflags! {
-    #[derive(BinRead, BinWrite)]
-    pub struct ContentMetaInstallState: u8 {
+    impl ContentMetaInstallState: u8 {
         const COMMITTED = 0x01;
     }
 }
@@ -146,7 +148,7 @@ pub struct PackagedContentInfo {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, BinRead, BinWrite)]
 pub struct ContentMetaInfo {
-    pub title_id: ProgramId,
+    pub title_id: AnyId,
     pub version: u32,
     pub ty: NcmContentType,
     #[brw(pad_after = 2)]
@@ -165,7 +167,7 @@ pub enum ExtendedData {
 #[derive(Debug, Clone, Eq, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
 pub struct PackagedContentMeta {
-    pub title_id: ProgramId,
+    pub title_id: AnyId,
     pub version: u32,
     pub ty: ContentMetaType,
     pub field_d: u8,

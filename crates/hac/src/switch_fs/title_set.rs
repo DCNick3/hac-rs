@@ -3,7 +3,7 @@ use crate::formats::cnmt::{ContentMetaType, NcmContentType, PackagedContentMeta}
 use crate::formats::nacp::Nacp;
 use crate::formats::nca::filesystem::NcaOpenError;
 use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaContentType, NcaSectionType};
-use crate::ids::{ContentId, ProgramId};
+use crate::ids::{AnyId, ContentId};
 use crate::storage::{ReadableStorage, ReadableStorageExt, StorageError};
 use crate::switch_fs::nca_set::NcaSet;
 use binrw::BinRead;
@@ -77,7 +77,7 @@ impl Title {
         self.control.any_title()
     }
 
-    pub fn title_id(&self) -> ProgramId {
+    pub fn title_id(&self) -> AnyId {
         self.metadata.title_id
     }
 
@@ -200,7 +200,7 @@ fn parse_title<S: ReadableStorage>(
 
 // Key is a pair of (TitleId, Version) to allow multiple versions of the same title
 // TODO: use a separate type for Version
-pub type TitleSet = IndexMap<(ProgramId, u32), Title>;
+pub type TitleSet = IndexMap<(AnyId, u32), Title>;
 
 pub fn title_set_from_nca_set<S: ReadableStorage>(
     ncas: &NcaSet<S>,

@@ -1,7 +1,7 @@
 use crate::crypto::keyset::KeyAreaKeyIndex;
 use crate::crypto::{EncryptedAesKey, EncryptedAesXtsKey};
 use crate::hexstring::HexData;
-use crate::ids::{ProgramId, RightsId};
+use crate::ids::{AnyId, RightsId};
 use binrw::{BinRead, BinWrite};
 use std::fmt::Debug;
 
@@ -144,7 +144,7 @@ pub struct NcaHeader {
     pub key_generation_1: u8,
     pub key_area_key_index: KeyAreaKeyIndex,
     pub nca_size: u64,
-    pub title_id: ProgramId,
+    pub title_id: AnyId,
     pub content_index: u32,
     pub sdk_version: u32,
     #[brw(pad_after = 0xf)]
