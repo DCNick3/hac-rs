@@ -1,5 +1,5 @@
 use crate::filesystem::{ReadableFile, ReadableFileSystem};
-use crate::formats::cnmt::{NcmContentType, PackagedContentMeta};
+use crate::formats::cnmt::{ExtendedMetaHeader, NcmContentType, PackagedContentMeta};
 use crate::formats::nacp::ApplicationControlProperty;
 use crate::formats::nca::{IntegrityCheckLevel, Nca, NcaSectionType};
 use crate::ids::{ContentId, ProgramId};
@@ -51,15 +51,17 @@ fn read_control<S: ReadableStorage>(
 
 struct ProgramInfoBuilder {
     id: ProgramId,
+    base_program_id: Option<ProgramId>,
     program_content: Option<ContentId>,
     control_content: Option<ContentId>,
     html_document_content: Option<ContentId>,
 }
 
 impl ProgramInfoBuilder {
-    fn new(id: ProgramId) -> Self {
+    fn new(id: ProgramId, base_program_id: Option<ProgramId>) -> Self {
         Self {
             id,
+            base_program_id,
             program_content: None,
             control_content: None,
             html_document_content: None,
@@ -79,6 +81,7 @@ impl ProgramInfoBuilder {
 
         Ok(ProgramInfo {
             id: self.id,
+            base_program_id: self.base_program_id,
             program_content_id,
             control_content_id,
             html_document_content_id,
@@ -92,16 +95,24 @@ pub fn parse_programs<S: ReadableStorage>(
     // pre-condition: all the NCAs mentioned in the meta are in the NCA set
     nca_set: &NcaSet<S>,
 ) -> Result<Vec<ProgramInfo>, ProgramsParseError> {
-    let base_id = meta.id;
+    let id_base = meta.id;
+    let base_id_base =
+        if let ExtendedMetaHeader::Patch { application_id, .. } = meta.extended_header {
+            Some(application_id)
+        } else {
+            None
+        };
     let mut builders = IndexMap::new();
 
     for content in meta.content_info.iter() {
         let content = content.content_info;
 
-        let program_id = ProgramId::new(base_id, content.id_offset);
+        let program_id = ProgramId::new(id_base, content.id_offset);
+        let base_program_id =
+            base_id_base.map(|base_id_base| ProgramId::new(base_id_base.into(), content.id_offset));
         let builder = builders
             .entry(program_id)
-            .or_insert_with(|| ProgramInfoBuilder::new(program_id));
+            .or_insert_with(|| ProgramInfoBuilder::new(program_id, base_program_id));
 
         match content.ty {
             NcmContentType::Program => builder.program_content = Some(content.id),

@@ -1,6 +1,6 @@
-// mod application_set;
-mod content_set;
-mod nca_set;
+pub mod application_set;
+pub mod content_set;
+pub mod nca_set;
 mod tickets;
 
 use crate::crypto::keyset::KeySet;
@@ -9,13 +9,12 @@ use snafu::{ResultExt, Snafu};
 use std::fmt::Debug;
 
 pub use crate::switch_fs::tickets::{import_tickets, TicketImportError};
-// pub use application_set::{build_application_set, Application, ApplicationSet};
-pub use content_set::{
-    content_set_from_nca_set, AnyContentInfo, ApplicationInfo, ContentInfoCommon,
-    ContentParseError, ContentSetParseError, ControlParseError, DataInfo, DataPatchInfo, PatchInfo,
-    ProgramInfo, TitleSet,
+use application_set::{build_application_set, ApplicationSet};
+use content_set::{
+    content_set_from_nca_set, AnyContentInfo, ContentSet, ContentSetParseError, ControlParseError,
+    ProgramInfo,
 };
-pub use nca_set::{nca_set_from_fs, NcaSet, NcaSetParseError};
+use nca_set::{nca_set_from_fs, NcaSet, NcaSetParseError};
 
 #[derive(Snafu, Debug)]
 pub enum NewSwitchFsError {
@@ -31,8 +30,8 @@ pub enum NewSwitchFsError {
 #[derive(Debug)]
 pub struct SwitchFs<F: ReadableFileSystem> {
     nca_set: NcaSet<F::Storage>,
-    title_set: TitleSet,
-    // application_set: ApplicationSet,
+    title_set: ContentSet,
+    application_set: ApplicationSet,
 }
 
 impl<F: ReadableFileSystem> SwitchFs<F> {
@@ -43,12 +42,12 @@ impl<F: ReadableFileSystem> SwitchFs<F> {
 
         let nca_set = nca_set_from_fs(&key_set, fs).context(NcaSetParseSnafu)?;
         let title_set = content_set_from_nca_set(&nca_set).context(TitleSetParseSnafu)?;
-        // let application_set = build_application_set(&nca_set, &title_set);
+        let application_set = build_application_set(&nca_set, &title_set);
 
         Ok(Self {
             nca_set,
             title_set,
-            // application_set,
+            application_set,
         })
     }
 
@@ -56,11 +55,11 @@ impl<F: ReadableFileSystem> SwitchFs<F> {
         &self.nca_set
     }
 
-    pub fn title_set(&self) -> &TitleSet {
+    pub fn title_set(&self) -> &ContentSet {
         &self.title_set
     }
 
-    // pub fn application_set(&self) -> &ApplicationSet {
-    //     &self.application_set
-    // }
+    pub fn application_set(&self) -> &ApplicationSet {
+        &self.application_set
+    }
 }

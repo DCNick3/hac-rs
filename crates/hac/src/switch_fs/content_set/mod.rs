@@ -93,6 +93,8 @@ impl ContentInfoCommon {
 #[derive(Debug)]
 pub struct ProgramInfo {
     pub id: ProgramId,
+    // only set for programs in the patch
+    pub base_program_id: Option<ProgramId>,
     pub program_content_id: ContentId,
     pub control_content_id: ContentId,
     pub html_document_content_id: Option<ContentId>,
@@ -337,13 +339,11 @@ fn parse_content<S: ReadableStorage>(
     // let control = read_control(control_nca).context(ControlParseSnafu { control_nca_id })?;
 }
 
-// Key is a pair of (TitleId, Version) to allow multiple versions of the same title
-// TODO: use a separate type for Version
-pub type TitleSet = IndexMap<ContentMetaKey, AnyContentInfo>;
+pub type ContentSet = IndexMap<ContentMetaKey, AnyContentInfo>;
 
 pub fn content_set_from_nca_set<S: ReadableStorage>(
     ncas: &NcaSet<S>,
-) -> Result<TitleSet, ContentSetParseError> {
+) -> Result<ContentSet, ContentSetParseError> {
     let mut titles = IndexMap::new();
 
     for (&id, nca) in ncas {

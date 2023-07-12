@@ -8,8 +8,10 @@ use hac::formats::pfs::PartitionFileSystem;
 use hac::formats::ticket::Ticket;
 use hac::snafu::{ResultExt, Snafu, Whatever};
 use hac::storage::ReadableStorageExt;
-use hac::switch_fs::{AnyContentInfo, SwitchFs};
+use hac::switch_fs::content_set::AnyContentInfo;
+use hac::switch_fs::SwitchFs;
 use itertools::Itertools;
+use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -231,36 +233,48 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
             }
             AnyContentInfo::DataPatch(_) => todo!(),
         }
-
-        // let ty = content.ty();
-        //
-        // println!(
-        //     "  [{}][{:>10}] {:>12}: {:?} by {:?}",
-        //     title_id,
-        //     format!("v{}", version),
-        //     format!("{:?}", ty),
-        //     app_title.name,
-        //     app_title.publisher
-        // );
     }
 
-    // println!("SwitchFs applications:");
-    // for application in switch_fs.application_set().values() {
-    //     let title_id = application.application_title_id;
-    //     // TODO: do the base titles always have version 0?
-    //     let base_title = switch_fs.title_set().get(&(title_id, 0)).unwrap();
-    //     let name = base_title.any_title().unwrap().name.as_str();
-    //     println!("[{}] {}", application.application_title_id, name);
-    //     println!("  [        v0] {}.nca", application.main_nca_id);
-    //     for patch in &application.patches {
-    //         let version = patch.version;
-    //         println!(
-    //             "  [{:>10}] {}.nca",
-    //             format!("v{}", version),
-    //             patch.main_nca_id
-    //         );
-    //     }
-    // }
+    println!("SwitchFs applications:");
+    for application in switch_fs.application_set().values() {
+        let title = application
+            .versions
+            .first()
+            .unwrap()
+            .1
+            .programs
+            .first()
+            .unwrap()
+            .1
+            .control
+            .any_title()
+            .unwrap();
+        println!("- [{}] {}", application.id, title.name);
+        for (_, version) in &application.versions {
+            for (_, program) in &version.programs {
+                println!(
+                    "   {:>16} [{:<8}] [{}]: {}.nca{}",
+                    "",
+                    format!("{}", version.version),
+                    program.id,
+                    program.content_id,
+                    program
+                        .base_content_id
+                        .map(|id| format!(" @ {}.nca", id).into())
+                        .unwrap_or(Cow::Borrowed(""))
+                );
+            }
+        }
+
+        for (_, addon) in &application.addons {
+            println!(
+                "   {:>16} [{:>8}] [{}]: {}.nca",
+                "", "AddOn", addon.id, addon.data_content_id,
+            );
+        }
+
+        println!();
+    }
 
     Ok(())
 }
