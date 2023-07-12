@@ -6,6 +6,7 @@ use std::path::Path;
 mod block_adapter_storage;
 mod block_slice_storage;
 mod block_transform_storage;
+mod concat_storage;
 mod either_storage;
 mod io_storage;
 mod linear_adapter_storage;

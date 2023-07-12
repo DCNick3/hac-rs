@@ -20,6 +20,9 @@ enum-map = "2.4.2"
 itertools = "0.10.5"
 indexmap = "1.9.3"
 
+zstd = "0.12.3+zstd.1.5.2"
+replace_with = "0.1.7"
+
 cipher = "0.4.3"
 aes = "0.8.2"
 ctr = "0.9.2"

@@ -1,9 +1,9 @@
 use crate::storage::{ReadableStorage, Storage, StorageError};
 use std::fmt::Debug;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 pub struct VecStorage {
-    data: Mutex<Vec<u8>>,
+    data: RwLock<Vec<u8>>,
 }
 
 impl Debug for VecStorage {
@@ -15,14 +15,14 @@ impl Debug for VecStorage {
 impl VecStorage {
     pub fn new(data: Vec<u8>) -> Self {
         Self {
-            data: Mutex::new(data),
+            data: RwLock::new(data),
         }
     }
 }
 
 impl ReadableStorage for VecStorage {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
-        let data = self.data.lock().unwrap();
+        let data = self.data.read().unwrap();
 
         let offset = offset.try_into().unwrap();
         let len = buf.len();
@@ -31,7 +31,7 @@ impl ReadableStorage for VecStorage {
     }
 
     fn get_size(&self) -> u64 {
-        let data = self.data.lock().unwrap();
+        let data = self.data.read().unwrap();
 
         data.len().try_into().unwrap()
     }
@@ -39,7 +39,7 @@ impl ReadableStorage for VecStorage {
 
 impl Storage for VecStorage {
     fn write(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data.write().unwrap();
 
         let offset = offset.try_into().unwrap();
         let len = buf.len();
@@ -52,7 +52,7 @@ impl Storage for VecStorage {
     }
 
     fn set_size(&self, new_size: u64) -> Result<(), StorageError> {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data.write().unwrap();
 
         let new_size = new_size.try_into().unwrap();
         data.resize(new_size, 0);

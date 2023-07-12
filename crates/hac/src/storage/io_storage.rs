@@ -7,12 +7,12 @@ use std::sync::Mutex;
 use super::{IoSnafu, ReadableStorage, Storage, StorageError};
 
 #[derive(Debug)]
-pub struct RoIoStorage<Io: Read + Seek + Send + Sync> {
+pub struct RoIoStorage<Io: Read + Seek + Send> {
     io: Mutex<Io>,
     size: u64,
 }
 
-impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
+impl<Io: Read + Seek + Send> RoIoStorage<Io> {
     pub fn new(mut io: Io) -> Result<Self, StorageError> {
         let size = io
             .seek(SeekFrom::End(0))
@@ -35,7 +35,7 @@ impl<Io: Read + Seek + Send + Sync> RoIoStorage<Io> {
     }
 }
 
-impl<Io: Read + Seek + Send + Sync> ReadableStorage for RoIoStorage<Io> {
+impl<Io: Read + Seek + Send> ReadableStorage for RoIoStorage<Io> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
         self.check_size(offset, buf)?;
         let mut io = self.io.lock().unwrap();
@@ -50,7 +50,7 @@ impl<Io: Read + Seek + Send + Sync> ReadableStorage for RoIoStorage<Io> {
     }
 }
 
-impl<Io: Read + Seek + Send + Sync> Storage for RoIoStorage<Io> {
+impl<Io: Read + Seek + Send> Storage for RoIoStorage<Io> {
     fn write(&self, _offset: u64, _buf: &[u8]) -> Result<(), StorageError> {
         Err(StorageError::Readonly {})
     }

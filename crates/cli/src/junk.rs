@@ -4,6 +4,7 @@ use hac::filesystem::{
     Entry, ReadableDirectory, ReadableDirectoryExt, ReadableFile, ReadableFileSystem,
 };
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
+use hac::formats::ncz::NczStorage;
 use hac::formats::pfs::PartitionFileSystem;
 use hac::formats::ticket::Ticket;
 use hac::snafu::{ResultExt, Snafu, Whatever};
@@ -89,6 +90,44 @@ pub fn test_nca() -> Result<(), Whatever> {
     let duration = start.elapsed();
 
     println!("Written the section 2 in {:?}", duration);
+    Ok(())
+}
+
+#[allow(unused)]
+pub fn test_ncz() -> Result<(), Whatever> {
+    let base_name = "test_files/ncz/stream/ed5f53408e88b7d2974e3b6cce8bfa57".to_string();
+
+    let keyset = KeySet::from_system(None).unwrap();
+    let ncz_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".ncz").unwrap();
+
+    let ncz = NczStorage::new(ncz_storage).unwrap();
+
+    // let nca = Nca::new(&keyset, nca_storage).unwrap();
+    //
+    // println!("{:#?}", nca);
+    //
+    // let start = std::time::Instant::now();
+    // let fs0 = nca.get_section_fs(0, IntegrityCheckLevel::Full).unwrap();
+    // extract_fs(fs0.root(), &PathBuf::from(base_name.clone() + ".0dir"));
+    // let duration = start.elapsed();
+    //
+    // println!("Written the section 0 in {:?}", duration);
+    //
+    // // measure time it took us to write the file
+    // let start = std::time::Instant::now();
+    // let fs1 = nca.get_section_fs(1, IntegrityCheckLevel::Full).unwrap();
+    // extract_fs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
+    // let duration = start.elapsed();
+    //
+    // println!("Written the section 1 in {:?}", duration);
+    //
+    // // measure time it took us to write the file
+    // let start = std::time::Instant::now();
+    // let fs2 = nca.get_section_fs(2, IntegrityCheckLevel::Full).unwrap();
+    // extract_fs(fs2.root(), &PathBuf::from(base_name.clone() + ".2dir"));
+    // let duration = start.elapsed();
+    //
+    // println!("Written the section 2 in {:?}", duration);
     Ok(())
 }
 
@@ -282,9 +321,10 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
 pub fn main() -> Result<(), Whatever> {
     // test_nsp()?;
     // test_nca()?;
+    test_ncz()?;
     // test_tik()?;
     // test_cnmt()?;
     // test_nacp()?;
-    test_switch_fs()?;
+    // test_switch_fs()?;
     Ok(())
 }
