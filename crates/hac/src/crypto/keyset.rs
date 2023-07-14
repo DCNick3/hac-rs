@@ -48,35 +48,30 @@ pub struct MissingKeyError {
 
 #[derive(Snafu, Debug)]
 pub enum KeySetParseError {
-    #[snafu(display("Could not parse keyset file at line {} column {}: {}", line, col, msg))]
+    /// Could not parse keyset file at line {line} column {col}: {msg}
     CommonKeysFileParse {
         line: usize,
         col: usize,
         msg: String,
     },
-    #[snafu(display(
-        "Could not parse title keys file at line {} column {}: {}",
-        line,
-        col,
-        msg
-    ))]
+    /// Could not parse title keys file at line {line} column {col}: {msg}
     TitleKeysFileParse {
         line: usize,
         col: usize,
         msg: String,
     },
 
-    #[snafu(display("Could not parse key {}: {}", key_name, source))]
+    /// Could not parse key {key_name}: {source}
     KeyParse {
         key_name: KeyName,
         source: KeyParseError,
     },
-    #[snafu(display("Could not parse rightsid {}: {}", rights_id, source))]
+    /// Could not parse rightsid {rights_id}: {source}
     RightsIdParse {
         rights_id: String,
         source: IdParseError,
     },
-    #[snafu(display("Could not parse title key for rightsid {:?}: {}", rights_id, source))]
+    /// Could not parse title key for rightsid {rights_id:?}: {source}
     TitleKeyParse {
         rights_id: RightsId,
         source: KeyParseError,
@@ -91,7 +86,7 @@ pub enum SystemKeysetError {
 }
 
 #[derive(Snafu, Debug)]
-#[snafu(display("Missing title key for RightsId {}", rights_id))]
+/// Missing title key for RightsId {rights_id}
 pub struct MissingTitleKeyError {
     pub rights_id: RightsId,
 }

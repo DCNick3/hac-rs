@@ -7,9 +7,9 @@ use snafu::{ResultExt, Snafu};
 
 #[derive(Snafu, Debug)]
 pub enum TicketImportError {
-    #[snafu(display("Failed to read the ticket file"))]
+    /// Failed to read the ticket file
     ReadTicketFile { source: StorageError },
-    #[snafu(display("Failed to parse the ticket file"))]
+    /// Failed to parse the ticket file
     ParseTicketFile { source: binrw::Error },
 }
 

@@ -19,59 +19,59 @@ use tracing::info;
 
 #[derive(Snafu, Debug)]
 pub enum ControlParseError {
-    #[snafu(display("Control NCA does not have the data section"))]
+    /// Control NCA does not have the data section
     NoDataSection {},
-    #[snafu(display("Control NCA does not the control.nacp file"))]
+    /// Control NCA does not the control.nacp file
     NoControlNacp {},
-    #[snafu(display("Failed to open control.nacp"))]
+    /// Failed to open control.nacp
     ControlNacpOpen { source: NcaOpenError },
-    #[snafu(display("Failed to read control.nacp"))]
+    /// Failed to read control.nacp
     ControlNacpRead { source: StorageError },
-    #[snafu(display("Failed to parse control.nacp"))]
+    /// Failed to parse control.nacp
     ControlNacpParse { source: binrw::Error },
 }
 
 #[derive(Snafu, Debug)]
 pub enum ContentParseError {
-    #[snafu(display("Meta NCA does not have the data section"))]
+    /// Meta NCA does not have the data section
     MetaNoDataSection {},
-    #[snafu(display("Meta NCA has multiple CNMT"))]
+    /// Meta NCA has multiple CNMT
     MetaMultipleCnmt {},
-    #[snafu(display("Meta NCA has no CNMT"))]
+    /// Meta NCA has no CNMT
     MetaNoCnmt {},
 
-    #[snafu(display("Failed to open the CNMT file"))]
+    /// Failed to open the CNMT file
     MetaCnmtOpen { source: NcaOpenError },
-    #[snafu(display("Failed to read the CNMT file"))]
+    /// Failed to read the CNMT file
     MetaCnmtRead { source: StorageError },
-    #[snafu(display("Failed to parse the CNMT file"))]
+    /// Failed to parse the CNMT file
     MetaCnmtParse { source: binrw::Error },
 
-    #[snafu(display("Unsupported meta type {ty:?}"))]
+    /// Unsupported meta type {ty:?}
     MetaUnsupportedType { ty: ContentMetaType },
 
-    #[snafu(display("Failed to parse the programs for the Content"))]
+    /// Failed to parse the programs for the Content
     ProgramsParse { source: ProgramsParseError },
 
-    #[snafu(display("NCA {nca_id} mentioned in the metadata not found"))]
+    /// NCA {nca_id} mentioned in the metadata not found
     MissingNca { nca_id: ContentId },
-    #[snafu(display("Could not find the main NCA for the title"))]
+    /// Could not find the main NCA for the title
     MissingMainNca {},
-    #[snafu(display("Could not find the control NCA for the title"))]
+    /// Could not find the control NCA for the title
     MissingControlNca {},
-    #[snafu(display("Could not find the legal information NCA for the title"))]
+    /// Could not find the legal information NCA for the title
     MissingLegalInformationNca {},
-    #[snafu(display("Could not find the data NCA for the title"))]
+    /// Could not find the data NCA for the title
     MissingDataNca {},
-    #[snafu(display("Could not parse the Control NCA {control_nca_id} for the title"))]
+    /// Could not parse the Control NCA {control_nca_id} for the title
     ControlParse {
         control_nca_id: ContentId,
         source: ControlParseError,
     },
 }
 
+/// Failed to parse contents for meta nca {meta_nca_id}
 #[derive(Snafu, Debug)]
-#[snafu(display("Failed to parse title for meta nca {meta_nca_id}"))]
 pub struct ContentSetParseError {
     pub meta_nca_id: ContentId,
     pub source: ContentParseError,

@@ -15,17 +15,18 @@ use std::collections::BTreeMap;
 
 #[derive(Snafu, Debug)]
 pub enum ProgramParseError {
-    #[snafu(display("Program is missing the Program NCA"))]
+    /// Program is missing the Program NCA
     MissingProgramContent {},
-    #[snafu(display("Program is missing the Control NCA"))]
+    /// Program is missing the Control NCA
     MissingControlContent {},
-    #[snafu(display("Could not parse the Control NCA {control_content_id} for the program"))]
+    /// Could not parse the Control NCA {control_content_id} for the program
     ControlParse {
         control_content_id: ContentId,
         source: ControlParseError,
     },
 }
 
+/// Could not parse one of the programs
 #[derive(Snafu, Debug)]
 pub struct ProgramsParseError {
     program: ProgramId,

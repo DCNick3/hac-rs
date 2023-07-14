@@ -165,19 +165,19 @@ impl<T: ReadableBlockStorage> ReadableBlockStorageExt for T {}
 
 #[derive(Snafu, Debug)]
 pub enum StorageError {
-    #[snafu(display("IO error in IoStorage: {}", source))]
+    /// IO error while doing {operation}
     Io {
         source: std::io::Error,
         operation: &'static str,
     },
-    #[snafu(display("Attempt to write to a read-only storage"))]
+    /// Attempt to write to a read-only storage
     Readonly {},
-    #[snafu(display("Attempt to resize a fixed-size storage"))]
+    /// Attempt to resize a fixed-size storage
     FixedSize {},
-    #[snafu(display("Attempt to read or write to a storage out of bounds"))]
+    /// Attempt to read or write to a storage out of bounds
     OutOfBounds {},
-    #[snafu(display("Integrity check failed"))]
+    /// Integrity check failed
     IntegrityCheckFailed {},
-    #[snafu(display("A storage requiring aligned access was accessed with an unaligned offset"))]
+    /// A storage requiring aligned access was accessed with an unaligned offset
     UnalignedAccess {},
 }

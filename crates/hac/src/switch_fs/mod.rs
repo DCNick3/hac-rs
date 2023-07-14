@@ -18,12 +18,12 @@ use nca_set::{nca_set_from_fs, NcaSet, NcaSetParseError};
 
 #[derive(Snafu, Debug)]
 pub enum NewSwitchFsError {
-    #[snafu(display("Failed to import ticket"))]
+    /// Failed to import ticket
     TicketImport { source: TicketImportError },
 
-    #[snafu(display("Failed to parse the NCA set"))]
+    /// Failed to parse the NCA set
     NcaSetParse { source: NcaSetParseError },
-    #[snafu(display("Failed to parse the title set"))]
+    /// Failed to parse the title set
     TitleSetParse { source: ContentSetParseError },
 }
 

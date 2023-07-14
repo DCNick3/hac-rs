@@ -97,7 +97,7 @@ pub fn test_nca() -> Result<(), Whatever> {
 pub fn test_ncz() -> Result<(), Whatever> {
     let base_name = "test_files/ncz/stream/ed5f53408e88b7d2974e3b6cce8bfa57".to_string();
 
-    let keyset = KeySet::from_system(None).unwrap();
+    let keyset = KeySet::from_system(None).whatever_context("Parsing KeySet")?;
     let ncz_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".ncz").unwrap();
 
     let ncz = NczStorage::new(ncz_storage).unwrap();
