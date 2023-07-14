@@ -22,6 +22,7 @@ impl<S: ReadableStorage> StorageIo<S> {
 fn map_storage_error_to_std(error: StorageError) -> std::io::Error {
     let kind = match &error {
         StorageError::Io { source, .. } => source.kind(),
+        StorageError::Inaccessible { .. } => ErrorKind::Other,
         StorageError::Readonly { .. } => ErrorKind::Other,
         StorageError::FixedSize { .. } => ErrorKind::Other,
         StorageError::OutOfBounds { .. } => ErrorKind::UnexpectedEof,

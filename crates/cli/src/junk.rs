@@ -4,7 +4,6 @@ use hac::filesystem::{
     Entry, ReadableDirectory, ReadableDirectoryExt, ReadableFile, ReadableFileSystem,
 };
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
-use hac::formats::ncz::Ncz;
 use hac::formats::pfs::PartitionFileSystem;
 use hac::formats::ticket::Ticket;
 use hac::snafu::{ResultExt, Snafu, Whatever};
@@ -101,35 +100,33 @@ pub fn test_ncz() -> Result<(), Whatever> {
     let ncz_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".ncz")
         .whatever_context("Opening file as storage")?;
 
-    // let ncz = Nca::new(&keyset, ncz_storage).whatever_context("Parsing NCZ")?;
-    let ncz = Ncz::new(ncz_storage).whatever_context("Parsing NCZ")?;
+    let nca = Nca::new(&keyset, ncz_storage).whatever_context("Parsing NCZ")?;
+    // let ncz = Ncz::new(ncz_storage).whatever_context("Parsing NCZ")?;
 
-    // let nca = Nca::new(&keyset, nca_storage).unwrap();
-    //
-    // println!("{:#?}", nca);
-    //
-    // let start = std::time::Instant::now();
-    // let fs0 = nca.get_section_fs(0, IntegrityCheckLevel::Full).unwrap();
-    // extract_fs(fs0.root(), &PathBuf::from(base_name.clone() + ".0dir"));
-    // let duration = start.elapsed();
-    //
-    // println!("Written the section 0 in {:?}", duration);
-    //
-    // // measure time it took us to write the file
-    // let start = std::time::Instant::now();
-    // let fs1 = nca.get_section_fs(1, IntegrityCheckLevel::Full).unwrap();
-    // extract_fs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
-    // let duration = start.elapsed();
-    //
-    // println!("Written the section 1 in {:?}", duration);
-    //
-    // // measure time it took us to write the file
-    // let start = std::time::Instant::now();
-    // let fs2 = nca.get_section_fs(2, IntegrityCheckLevel::Full).unwrap();
-    // extract_fs(fs2.root(), &PathBuf::from(base_name.clone() + ".2dir"));
-    // let duration = start.elapsed();
-    //
-    // println!("Written the section 2 in {:?}", duration);
+    println!("{:#?}", nca);
+
+    let start = std::time::Instant::now();
+    let fs0 = nca.get_section_fs(0, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs0.root(), &PathBuf::from(base_name.clone() + ".0dir"));
+    let duration = start.elapsed();
+
+    println!("Written the section 0 in {:?}", duration);
+
+    // measure time it took us to write the file
+    let start = std::time::Instant::now();
+    let fs1 = nca.get_section_fs(1, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs1.root(), &PathBuf::from(base_name.clone() + ".1dir"));
+    let duration = start.elapsed();
+
+    println!("Written the section 1 in {:?}", duration);
+
+    // measure time it took us to write the file
+    let start = std::time::Instant::now();
+    let fs2 = nca.get_section_fs(2, IntegrityCheckLevel::Full).unwrap();
+    extract_fs(fs2.root(), &PathBuf::from(base_name.clone() + ".2dir"));
+    let duration = start.elapsed();
+
+    println!("Written the section 2 in {:?}", duration);
     Ok(())
 }
 

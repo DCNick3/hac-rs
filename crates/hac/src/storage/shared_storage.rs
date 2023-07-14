@@ -1,4 +1,5 @@
 use crate::storage::{ReadableStorage, StorageError};
+use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -11,6 +12,14 @@ impl<S: ReadableStorage> SharedStorage<S> {
         Self {
             storage: Arc::new(storage),
         }
+    }
+}
+
+impl<S: ReadableStorage> Deref for SharedStorage<S> {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.storage
     }
 }
 

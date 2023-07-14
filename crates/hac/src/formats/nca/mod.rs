@@ -1,17 +1,19 @@
 mod contents;
 mod crypt_storage;
 pub mod filesystem;
+mod ncz;
 mod structs;
 mod verification_storage;
 
 use binrw::BinRead;
+use itertools::Either;
 use snafu::{ResultExt, Snafu};
 use std::io::Cursor;
 
 use crate::crypto::keyset::KeySet;
 use crate::crypto::{AesKey, AesXtsKey};
 use crate::formats::nca::structs::{NcaFsHeader, NcaHeader, NcaMagic};
-use crate::storage::{ReadableStorage, SharedStorage, StorageError};
+use crate::storage::{ReadableStorage, ReadableStorageExt, StorageError};
 
 pub use contents::{
     RawDecryptedSectionStorage, RawEncryptedSectionStorage, SectionFileSystem,
@@ -21,31 +23,32 @@ pub use crypt_storage::NcaCryptStorage;
 pub use structs::{NcaContentType, NcaSectionType};
 pub use verification_storage::{IntegrityCheckLevel, NcaVerificationStorage};
 
+use crate::formats::nca::contents::Body;
+use crate::formats::nca::ncz::NczBodyStorage;
+pub use ncz::NczError;
+
 #[derive(Snafu, Debug)]
 pub enum NcaError {
-    Storage {
-        source: StorageError,
-    },
+    /// NCA: Failed to read from the storage
+    Storage { source: StorageError },
+    /// NCA: Missing a crypto key
     MissingKey {
         source: crate::crypto::keyset::MissingKeyError,
     },
+    /// NCA: Missing a title key
     MissingTitleKey {
         source: crate::crypto::keyset::MissingTitleKeyError,
     },
-    NcaHeaderParsing {
-        source: binrw::Error,
-    },
-    FsHeaderParsing {
-        index: usize,
-        source: binrw::Error,
-    },
-    FsHeaderHashMismatch {
-        index: usize,
-    },
-    StorageSizeMismatch {
-        expected: u64,
-        actual: u64,
-    },
+    /// NCA: Failed to parse the NCA header
+    NcaHeaderParsing { source: binrw::Error },
+    /// NCA: Failed to parse the NCA FS header for section {index}
+    FsHeaderParsing { index: usize, source: binrw::Error },
+    /// NCA: Error while handling an NCZ file
+    Ncz { source: NczError },
+    /// NCA: FS header hash mismatch for section {index}
+    FsHeaderHashMismatch { index: usize },
+    /// NCA: Invalid size: expected {expected}, got {actual}
+    StorageSizeMismatch { expected: u64, actual: u64 },
 }
 
 #[derive(Debug)]
@@ -81,7 +84,7 @@ enum NcaContentKeys {
 
 #[derive(Debug)]
 pub struct Nca<S: ReadableStorage> {
-    storage: SharedStorage<S>,
+    body: Body<S>,
     headers: AllNcaHeaders,
     content_key: NcaContentKeys,
 }
@@ -93,18 +96,6 @@ const HEADER_SECTOR_SIZE: usize = 0x200;
 impl<S: ReadableStorage> Nca<S> {
     pub fn new(key_set: &KeySet, storage: S) -> Result<Self, NcaError> {
         let (headers, is_decrypted) = Self::parse_headers(key_set, &storage)?;
-
-        // NCZ will have a mismatching size
-        // this will be raised to an error if it is not a NCZ
-        let size_mismatches = headers.nca_header.nca_size != storage.get_size();
-
-        // TODO: NCZ, you know
-        if size_mismatches {
-            return Err(NcaError::StorageSizeMismatch {
-                expected: headers.nca_header.nca_size,
-                actual: storage.get_size(),
-            });
-        }
 
         let content_key = if is_decrypted {
             NcaContentKeys::Plaintext
@@ -139,8 +130,20 @@ impl<S: ReadableStorage> Nca<S> {
             assert_eq!(section_count, 1);
         };
 
+        let body = match NczBodyStorage::try_new(storage).context(NczSnafu)? {
+            Either::Left(ncz_storage) => Body::Ncz(ncz_storage.shared()),
+            Either::Right(storage) => Body::Nca(storage.shared()),
+        };
+
+        if headers.nca_header.nca_size != body.get_size() {
+            return Err(NcaError::StorageSizeMismatch {
+                expected: headers.nca_header.nca_size,
+                actual: body.get_size(),
+            });
+        }
+
         Ok(Self {
-            storage: SharedStorage::new(storage),
+            body,
             headers,
             content_key,
         })

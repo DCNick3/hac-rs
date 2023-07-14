@@ -7,6 +7,7 @@ mod block_adapter_storage;
 mod block_slice_storage;
 mod block_transform_storage;
 mod concat_storage;
+mod deny_storage;
 mod either_storage;
 mod io_storage;
 mod linear_adapter_storage;
@@ -171,6 +172,8 @@ pub enum StorageError {
         source: std::io::Error,
         operation: &'static str,
     },
+    /// Attempt to access an inaccessible region of a storage
+    Inaccessible { offset: u64 },
     /// Attempt to write to a read-only storage
     Readonly {},
     /// Attempt to resize a fixed-size storage

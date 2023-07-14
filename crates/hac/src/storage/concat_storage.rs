@@ -1,5 +1,6 @@
 use crate::storage::{ReadableStorage, StorageError};
 
+#[derive(Debug)]
 pub struct ConcatStorage2<Left, Right> {
     left: Left,
     right: Right,
@@ -39,6 +40,7 @@ impl<Left: ReadableStorage, Right: ReadableStorage> ReadableStorage
     }
 }
 
+#[derive(Debug)]
 pub struct ConcatStorageN<S> {
     storages: Vec<S>,
 }

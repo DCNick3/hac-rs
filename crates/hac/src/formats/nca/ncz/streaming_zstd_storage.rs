@@ -1,8 +1,10 @@
 // this is really bad...
 
 use crate::storage::{ReadableStorage, RoIoStorage, StorageError, StorageIo};
+use std::fmt;
 use std::io::{BufReader, Seek, SeekFrom};
 
+#[derive(Debug)]
 struct FakeSeek<Io, IoReset> {
     io: Io,
     io_reset: IoReset,
@@ -96,6 +98,12 @@ fn reset_zstd_io<S: ReadableStorage>(io: RawZstdIo<S>) -> RawZstdIo<S> {
 /// It is VERY inefficient when you try to read it non-sequentially. (it basically has to re-start the decompression from the beginning)
 pub struct StreamingZstdStorage<S: ReadableStorage> {
     storage: RoIoStorage<ZstdIo<S>>,
+}
+
+impl<S: ReadableStorage> fmt::Debug for StreamingZstdStorage<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("StreamingZstdStorage").finish()
+    }
 }
 
 impl<S: ReadableStorage> StreamingZstdStorage<S> {
