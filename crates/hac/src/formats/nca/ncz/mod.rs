@@ -2,8 +2,8 @@ mod streaming_zstd_storage;
 
 use crate::hexstring::HexData;
 use crate::storage::{
-    ConcatStorageN, ReadableStorage, ReadableStorageExt, SharedStorage, SliceStorage, StorageError,
-    StorageIo,
+    BlockAdapterStorage, BlockCacheStorage, ConcatStorageN, LinearAdapterStorage, ReadableStorage,
+    ReadableStorageExt, SharedStorage, SliceStorage, StorageError, StorageIo,
 };
 use streaming_zstd_storage::StreamingZstdStorage;
 
@@ -11,6 +11,7 @@ use binrw::{BinRead, BinReaderExt, BinWrite};
 use itertools::Either;
 use snafu::{ResultExt, Snafu};
 use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::time::Duration;
 
 const BLOCK_EXPONENT_MIN: u8 = 14;
 const BLOCK_EXPONENT_MAX: u8 = 32;
@@ -67,8 +68,33 @@ const NCA_HEADERS_SIZE: u64 = 0x4000;
 
 #[derive(Debug)]
 pub enum NczBodyStorage<S: ReadableStorage> {
-    Streaming(StreamingZstdStorage<SliceStorage<S>>),
-    Block(ConcatStorageN<StreamingZstdStorage<SliceStorage<SharedStorage<S>>>>),
+    Streaming(
+        LinearAdapterStorage<
+            BlockCacheStorage<BlockAdapterStorage<StreamingZstdStorage<SliceStorage<S>>>>,
+        >,
+    ),
+    Block(
+        LinearAdapterStorage<
+            BlockCacheStorage<
+                BlockAdapterStorage<
+                    ConcatStorageN<StreamingZstdStorage<SliceStorage<SharedStorage<S>>>>,
+                >,
+            >,
+        >,
+    ),
+}
+
+fn make_cache<S: ReadableStorage>(
+    storage: S,
+    block_size: u64,
+    cache_blocks: u64,
+    time_to_idle: Duration,
+) -> LinearAdapterStorage<BlockCacheStorage<BlockAdapterStorage<S>>> {
+    let storage = BlockAdapterStorage::new(storage, block_size);
+    let storage = BlockCacheStorage::new(storage, cache_blocks, time_to_idle);
+    let storage = LinearAdapterStorage::new(storage);
+
+    storage
 }
 
 impl<S: ReadableStorage> ReadableStorage for NczBodyStorage<S> {
@@ -159,7 +185,12 @@ impl<S: ReadableStorage> NczBodyStorage<S> {
 
         let uncompressed_storage = ConcatStorageN::new(block_storages);
 
-        Ok(NczBodyStorage::Block(uncompressed_storage))
+        Ok(NczBodyStorage::Block(make_cache(
+            uncompressed_storage,
+            1024 * 1024,
+            64,
+            Duration::from_millis(500),
+        )))
     }
 
     fn make_stream(
@@ -184,7 +215,12 @@ impl<S: ReadableStorage> NczBodyStorage<S> {
         let uncompressed_storage = StreamingZstdStorage::new(compressed_storage, uncompressed_size)
             .context(StorageSnafu)?;
 
-        Ok(NczBodyStorage::Streaming(uncompressed_storage))
+        Ok(NczBodyStorage::Streaming(make_cache(
+            uncompressed_storage,
+            512 * 1024,
+            128,
+            Duration::from_millis(500),
+        )))
     }
 
     /// Checks whether the file is an NCZ and returns storage for uncompressed body

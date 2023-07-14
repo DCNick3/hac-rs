@@ -4,6 +4,7 @@ use std::io::BufReader;
 use std::path::Path;
 
 mod block_adapter_storage;
+mod block_cache_storage;
 mod block_slice_storage;
 mod block_transform_storage;
 mod concat_storage;
@@ -17,6 +18,7 @@ mod storage_io;
 mod vec_storage;
 
 pub use block_adapter_storage::BlockAdapterStorage;
+pub use block_cache_storage::BlockCacheStorage;
 pub use block_slice_storage::{BlockSliceStorage, BlockSliceStorageError};
 pub use block_transform_storage::{
     block_transforms, AesCtrStorage, BlockTransform, BlockTransformStorage,

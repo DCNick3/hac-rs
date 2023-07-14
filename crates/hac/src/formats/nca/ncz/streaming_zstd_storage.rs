@@ -1,8 +1,13 @@
 // this is really bad...
 
-use crate::storage::{ReadableStorage, RoIoStorage, StorageError, StorageIo};
+use crate::storage::{
+    BlockAdapterStorage, BlockCacheStorage, LinearAdapterStorage, ReadableStorage, RoIoStorage,
+    StorageError, StorageIo,
+};
 use std::fmt;
 use std::io::{BufReader, Seek, SeekFrom};
+use std::time::Duration;
+use tracing::debug;
 
 #[derive(Debug)]
 struct FakeSeek<Io, IoReset> {
@@ -23,6 +28,7 @@ impl<Io: std::io::Read, IoReset: FnMut(Io) -> Io> FakeSeek<Io, IoReset> {
     }
 
     fn reset(&mut self) {
+        // debug!("Resetting zstd stream position!");
         replace_with::replace_with_or_abort(&mut self.io, &mut self.io_reset);
         self.position = 0;
     }
@@ -115,9 +121,9 @@ impl<S: ReadableStorage> StreamingZstdStorage<S> {
             reset_zstd_io as _, /* this "as" is unfortunate =( */
             uncompressed_size,
         );
-        Ok(Self {
-            storage: RoIoStorage::new(io)?,
-        })
+        let storage = RoIoStorage::new(io)?;
+
+        Ok(Self { storage })
     }
 }
 
