@@ -64,6 +64,10 @@ impl<S: ReadableStorage> std::io::Seek for StorageIo<S> {
         self.position = new_position as u64;
         Ok(self.position)
     }
+
+    fn stream_position(&mut self) -> std::io::Result<u64> {
+        Ok(self.position)
+    }
 }
 
 impl<S: Storage> std::io::Write for StorageIo<S> {

@@ -67,6 +67,8 @@ impl<S: ReadableStorage> ReadableStorage for ConcatStorageN<S> {
             if buf.is_empty() {
                 break;
             }
+
+            offset -= size;
         }
 
         Ok(())
@@ -74,5 +76,54 @@ impl<S: ReadableStorage> ReadableStorage for ConcatStorageN<S> {
 
     fn get_size(&self) -> u64 {
         self.storages.iter().map(|s| s.get_size()).sum()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::storage::{ConcatStorageN, ReadableStorage, VecStorage};
+
+    fn check_read<S: ReadableStorage>(storage: &S, offset: u64, expected: &[u8]) {
+        let mut buf = vec![0; expected.len()];
+        storage.read(offset, &mut buf).unwrap();
+        assert_eq!(
+            std::str::from_utf8(&buf).unwrap(),
+            std::str::from_utf8(expected).unwrap()
+        );
+    }
+
+    #[test]
+    fn concat_n() {
+        let storage = ConcatStorageN::new(vec![
+            VecStorage::new(b"".to_vec()),
+            VecStorage::new(b"1".to_vec()),
+            VecStorage::new(b"23".to_vec()),
+            VecStorage::new(b"456".to_vec()),
+            VecStorage::new(b"7890".to_vec()),
+        ]);
+
+        check_read(&storage, 0, b"");
+        check_read(&storage, 0, b"1234567890");
+        check_read(&storage, 1, b"2");
+        check_read(&storage, 1, b"23");
+        check_read(&storage, 2, b"34");
+        check_read(&storage, 3, b"456");
+        check_read(&storage, 3, b"4567890");
+    }
+
+    #[test]
+    fn concat_2() {
+        let storage = ConcatStorageN::new(vec![
+            VecStorage::new(b"123".to_vec()),
+            VecStorage::new(b"456".to_vec()),
+        ]);
+
+        check_read(&storage, 0, b"123456");
+        check_read(&storage, 1, b"23456");
+        check_read(&storage, 2, b"3456");
+        check_read(&storage, 3, b"456");
+        check_read(&storage, 4, b"56");
+        check_read(&storage, 5, b"6");
+        check_read(&storage, 6, b"");
     }
 }

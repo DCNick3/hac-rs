@@ -20,6 +20,7 @@ pub use block_slice_storage::{BlockSliceStorage, BlockSliceStorageError};
 pub use block_transform_storage::{
     block_transforms, AesCtrStorage, BlockTransform, BlockTransformStorage,
 };
+pub use concat_storage::{ConcatStorage2, ConcatStorageN};
 pub use either_storage::EitherStorage;
 pub use io_storage::{FileRoStorage, FileRwStorage, RoIoStorage, RwIoStorage};
 pub use linear_adapter_storage::LinearAdapterStorage;

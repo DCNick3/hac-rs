@@ -4,7 +4,7 @@ use hac::filesystem::{
     Entry, ReadableDirectory, ReadableDirectoryExt, ReadableFile, ReadableFileSystem,
 };
 use hac::formats::nca::{IntegrityCheckLevel, Nca};
-use hac::formats::ncz::NczStorage;
+use hac::formats::ncz::Ncz;
 use hac::formats::pfs::PartitionFileSystem;
 use hac::formats::ticket::Ticket;
 use hac::snafu::{ResultExt, Snafu, Whatever};
@@ -95,12 +95,14 @@ pub fn test_nca() -> Result<(), Whatever> {
 
 #[allow(unused)]
 pub fn test_ncz() -> Result<(), Whatever> {
-    let base_name = "test_files/ncz/stream/ed5f53408e88b7d2974e3b6cce8bfa57".to_string();
+    let base_name = "test_files/ncz/block/ed5f53408e88b7d2974e3b6cce8bfa57".to_string();
 
     let keyset = KeySet::from_system(None).whatever_context("Parsing KeySet")?;
-    let ncz_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".ncz").unwrap();
+    let ncz_storage = hac::storage::FileRoStorage::open(base_name.clone() + ".ncz")
+        .whatever_context("Opening file as storage")?;
 
-    let ncz = NczStorage::new(ncz_storage).unwrap();
+    // let ncz = Nca::new(&keyset, ncz_storage).whatever_context("Parsing NCZ")?;
+    let ncz = Ncz::new(ncz_storage).whatever_context("Parsing NCZ")?;
 
     // let nca = Nca::new(&keyset, nca_storage).unwrap();
     //

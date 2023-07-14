@@ -59,7 +59,7 @@ impl<Io: std::io::Read, IoReset: FnMut(Io) -> Io> Seek for FakeSeek<Io, IoReset>
             self.reset();
         }
 
-        let mut fast_forward_bytes = (new_position - self.position);
+        let mut fast_forward_bytes = new_position - self.position;
         let mut buffer = [0u8; 4096];
         while fast_forward_bytes > 0 {
             let read_size = std::cmp::min(fast_forward_bytes, buffer.len() as u64);
@@ -73,6 +73,10 @@ impl<Io: std::io::Read, IoReset: FnMut(Io) -> Io> Seek for FakeSeek<Io, IoReset>
 
         Ok(new_position)
     }
+
+    // TODO: implementing stream_len would be REALLY nice (much better perf than seeking to the end of the stream)
+    // I guess we better just special-case the "seek-to-the-end" case
+    // but it's unstable =(
 }
 
 type RawZstdIo<S> = zstd::Decoder<'static, BufReader<StorageIo<S>>>;
@@ -111,8 +115,7 @@ impl<S: ReadableStorage> StreamingZstdStorage<S> {
 
 impl<S: ReadableStorage> ReadableStorage for StreamingZstdStorage<S> {
     fn read(&self, offset: u64, buf: &mut [u8]) -> Result<(), StorageError> {
-        self.storage.read(offset, buf);
-        Ok(())
+        self.storage.read(offset, buf)
     }
 
     fn get_size(&self) -> u64 {
