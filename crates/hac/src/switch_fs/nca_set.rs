@@ -8,13 +8,13 @@ use tracing::info;
 
 #[derive(Snafu, Debug)]
 pub enum NcaSetParseError {
+    /// Failed to parse {nca_id}.nca
     NcaParse {
         nca_id: ContentId,
         source: crate::formats::nca::NcaError,
     },
-    NcaFilenameParse {
-        source: crate::ids::IdParseError,
-    },
+    /// Failed to parse NCA filename
+    NcaFilenameParse { source: crate::ids::IdParseError },
 }
 
 pub type NcaSet<S> = BTreeMap<ContentId, Nca<S>>;
@@ -25,7 +25,8 @@ pub type NcaSet<S> = BTreeMap<ContentId, Nca<S>>;
 fn parse_nca_filename(filename: &str) -> Result<Option<ContentId>, NcaSetParseError> {
     let filename = filename
         .strip_suffix(".cnmt.nca")
-        .or_else(|| filename.strip_suffix(".nca"));
+        .or_else(|| filename.strip_suffix(".nca"))
+        .or_else(|| filename.strip_suffix(".ncz"));
 
     filename
         .map(|v| v.parse())
@@ -40,7 +41,7 @@ pub fn nca_set_from_fs<F: ReadableFileSystem>(
     let mut ncas = BTreeMap::new();
 
     for file in ReadableDirectoryExt::entries_recursive(&fs.root())
-        .filter(|(n, _)| n.ends_with(".nca"))
+        .filter(|(n, _)| n.ends_with(".nca") || n.ends_with(".ncz"))
         .filter_map(|(_, e)| e.file())
     {
         // it's hard to report this error, as it depends on the FS implementation

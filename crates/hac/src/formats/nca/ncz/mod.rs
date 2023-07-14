@@ -189,7 +189,7 @@ impl<S: ReadableStorage> NczBodyStorage<S> {
             uncompressed_storage,
             1024 * 1024,
             64,
-            Duration::from_millis(500),
+            Duration::from_secs(2),
         )))
     }
 
@@ -219,7 +219,7 @@ impl<S: ReadableStorage> NczBodyStorage<S> {
             uncompressed_storage,
             512 * 1024,
             128,
-            Duration::from_millis(500),
+            Duration::from_secs(2),
         )))
     }
 
@@ -229,10 +229,15 @@ impl<S: ReadableStorage> NczBodyStorage<S> {
     pub fn try_new(storage: S) -> Result<Either<NczBodyStorage<S>, S>, NczError> {
         let total_size = storage.get_size();
 
+        if total_size < NCA_HEADERS_SIZE + 8 {
+            return Ok(Either::Right(storage));
+        }
+
         let mut ncz_magic = [0; 8];
         storage
             .read(NCA_HEADERS_SIZE, &mut ncz_magic)
-            .context(StorageSnafu)?;
+            .context(StorageSnafu)
+            .unwrap();
         if &ncz_magic != NCZ_MAGIC {
             return Ok(Either::Right(storage));
         }

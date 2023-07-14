@@ -1,13 +1,8 @@
 // this is really bad...
 
-use crate::storage::{
-    BlockAdapterStorage, BlockCacheStorage, LinearAdapterStorage, ReadableStorage, RoIoStorage,
-    StorageError, StorageIo,
-};
+use crate::storage::{ReadableStorage, RoIoStorage, StorageError, StorageIo};
 use std::fmt;
 use std::io::{BufReader, Seek, SeekFrom};
-use std::time::Duration;
-use tracing::debug;
 
 #[derive(Debug)]
 struct FakeSeek<Io, IoReset> {
@@ -121,7 +116,7 @@ impl<S: ReadableStorage> StreamingZstdStorage<S> {
             reset_zstd_io as _, /* this "as" is unfortunate =( */
             uncompressed_size,
         );
-        let storage = RoIoStorage::new(io)?;
+        let storage = RoIoStorage::new_with_size(io, uncompressed_size);
 
         Ok(Self { storage })
     }

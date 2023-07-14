@@ -180,7 +180,10 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
         .filter_map(|v| v.ok())
         .filter(|e| {
             (e.file_type().is_file() || e.file_type().is_symlink())
-                && e.path().extension().and_then(OsStr::to_str) == Some("nsp")
+                && matches!(
+                    e.path().extension().and_then(OsStr::to_str),
+                    Some("nsp" | "nsz")
+                )
         })
         .map(|v| v.path().to_owned())
         .collect::<Vec<_>>();
@@ -287,7 +290,10 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
             .control
             .any_title()
             .unwrap();
-        println!("- [{}] {}", application.id, title.name);
+        println!(
+            "- [{}] {}  by  {}",
+            application.id, title.name, title.publisher
+        );
         for version in application.versions.values() {
             for program in version.programs.values() {
                 println!(
@@ -320,10 +326,10 @@ pub fn test_switch_fs() -> Result<(), Whatever> {
 pub fn main() -> Result<(), Whatever> {
     // test_nsp()?;
     // test_nca()?;
-    test_ncz()?;
+    // test_ncz()?;
     // test_tik()?;
     // test_cnmt()?;
     // test_nacp()?;
-    // test_switch_fs()?;
+    test_switch_fs()?;
     Ok(())
 }

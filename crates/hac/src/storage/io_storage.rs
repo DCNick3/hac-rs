@@ -19,10 +19,14 @@ impl<Io: Read + Seek + Send> RoIoStorage<Io> {
             .context(IoSnafu { operation: "seek" })?;
         io.seek(SeekFrom::Start(0))
             .context(IoSnafu { operation: "seek" })?;
-        Ok(Self {
+        Ok(Self::new_with_size(io, size))
+    }
+
+    pub fn new_with_size(io: Io, size: u64) -> Self {
+        Self {
             io: Mutex::new(io),
             size,
-        })
+        }
     }
 
     fn check_size(&self, offset: u64, buf: &[u8]) -> Result<(), StorageError> {
